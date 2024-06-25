@@ -31,3 +31,11 @@ body {
     text-wrap: balance;
   }
 }
+
+html, body {
+  overflow-y: auto;
+  height: 150%;
+}
+
+main {
+}
