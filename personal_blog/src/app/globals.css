@@ -16,6 +16,25 @@
   }
 }
 
+@font-face {
+  font-family: 'Universal Jack';
+  src: url('/fonts/UniversalJack-JRY1B.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Universal Jack';
+  src: url('/fonts/UniversalJackLaser-jElyv.otf') format('opentype');
+  font-weight: bold;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Universal Jack';
+  src: url('/fonts/UniversalJackItalic-GOR4a.otf') format('opentype');
+  font-weight: normal;
+  font-style: italic;
+}
+
 body {
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(
@@ -33,9 +52,21 @@ body {
 }
 
 html, body {
+  font-family: 'Universal Jack', sans-serif;
   overflow-y: auto;
-  height: 150%;
+  height: 145%;
 }
 
 main {
+}
+
+#canvas {
+  background: url('/labg3.png') no-repeat;
+  background-size: cover;
+}
+/* Adjust the background size for zoom effect based on width */
+@media (max-width: 767px) {
+  #matter-canvas {
+    background-size: 150%; /* Default background size for smaller screens */
+  }
 }

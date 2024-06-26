@@ -13,6 +13,12 @@ const config: Config = {
         "gradient-conic":
           "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
       },
+      fontFamily: {
+        'universal-jack': ['"Universal Jack"', 'sans-serif'],
+      },
+      fontSize: {
+        'title_large': '5rem',
+      }
     },
   },
   plugins: [],
