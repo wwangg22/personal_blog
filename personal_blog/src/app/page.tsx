@@ -1,16 +1,14 @@
-import Image from "next/image";
-import MatterJsDemo from "./components/MatterJsDemo";
-import { Bucket } from "sst/node/bucket";
-import {listS3ObjectUrls} from "./components/aws_helper";
+import MatterJsDemo from "@/components/MatterJsDemo";
+import { listS3ObjectUrls } from "@/components/aws_helper";
 
 export default async function Home() {
-  const k = await listS3ObjectUrls('resume/', Bucket.publix.bucketName);
-  //console.log("k", k ,Bucket.publix.bucketName);
+  const k = await listS3ObjectUrls("resume/");
+
   return (
-    <main>
-      <MatterJsDemo
-      blocks={k}
-      />
+    <>
+    <main id="skyscraper" className="h-full w-full">
+      <MatterJsDemo blocks={k} />
     </main>
+    </>
   );
 }

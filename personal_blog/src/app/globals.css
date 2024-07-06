@@ -53,15 +53,11 @@ body {
 
 html, body {
   font-family: 'Universal Jack', sans-serif;
+  height:145%;
   overflow-y: auto;
-  height: 145%;
-}
-
-main {
 }
 
 #canvas {
-  background: url('/labg3.png') no-repeat;
   background-size: cover;
 }
 /* Adjust the background size for zoom effect based on width */
