@@ -24,5 +24,8 @@ export async function getFolders(name: string) {
 }
 export async function getFiles(name: string) {
     const directoryPath = path.join(process.cwd(), name);
-    return await fs.readdirSync(directoryPath);
+    // console.log("d", directoryPath, name);
+    const test = await fs.readdirSync(directoryPath);
+    // console.log('test ', test.map(file => name + "/" + file));
+    return test.map(file => name + "/" + file);
 }

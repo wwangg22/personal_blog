@@ -13,7 +13,7 @@ export async function GET(
     
     const name = searchParams.get('name');
 
-    console.log('name', name);
+    // console.log('name', name);
 
     if (typeof name === 'string'){
         const description = await getJsonObject('descriptions', name);

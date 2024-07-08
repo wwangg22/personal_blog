@@ -6,10 +6,11 @@ interface versionProps {
     models: string[];
     modelPath: string[];
     setModelPath: React.Dispatch<React.SetStateAction<string[]>>;
+    debug: boolean;
     // modelRef: MutableRefObject<string[]>;
   }
 
-const Menu: React.FC<versionProps> = ({models, modelPath, setModelPath}) => {
+const Menu: React.FC<versionProps> = ({models, modelPath, setModelPath, debug}) => {
     const handleClick = () => {
         const menu = document.getElementById("menu");
         if (menu){
@@ -34,7 +35,7 @@ const Menu: React.FC<versionProps> = ({models, modelPath, setModelPath}) => {
     }
     const getVersions = async (filepath:string) => {
         try {
-            const response = await axios.get('/api/getFolders', { params: { folder: filepath } });
+            const response = await axios.get('/api/getFolders', { params: { folder: filepath, debug: debug } });
             return response.data.foldernames;
         } catch (error) {
             console.log(error);

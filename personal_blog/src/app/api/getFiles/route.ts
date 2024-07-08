@@ -13,10 +13,17 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
 
   const folder = searchParams.get("folder");
-  //console.log('foler1', folder)
-  if (typeof folder == "string") {
+  const local = searchParams.get("debug");
+  console.log('local', local);
+  
+  if (local == 'true' && typeof folder == "string"){
+    var filenames:string[] = await getFiles(folder);
+    // console.log('filenames fdsf', filenames);
+    return NextResponse.json({ filenames: filenames }, { status: 200})
+  }
+
+  else if (typeof folder == "string") {
     var filenames: string[] = await listS3ObjectUrls(folder);
-    console.log("filenames", filenames);
     return NextResponse.json({ filenames: filenames }, { status: 200 });
   }
 

@@ -11,8 +11,13 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
 
   const folder = searchParams.get("folder");
-
-  if (typeof folder === "string") {
+  const local = searchParams.get("debug");
+  console.log('local', local);
+  if (local == 'true' && typeof folder == "string"){
+    var filenames: string[] = await getFolders(folder);
+    return NextResponse.json({ foldernames: filenames }, { status: 200 });
+  }
+  else if (typeof folder === "string") {
     var filenames: string[] = await listS3ObjectFolders(folder);
     return NextResponse.json({ foldernames: filenames }, { status: 200 });
   }

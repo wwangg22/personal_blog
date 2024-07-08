@@ -7,9 +7,10 @@ import Menu from './Menu';
 interface CADProps {
     initialPath: string[],
     models: string[],
+    debug: boolean,
 }
 
-const CadViewer:React.FC<CADProps> = ({initialPath, models}) => {  
+const CadViewer:React.FC<CADProps> = ({initialPath, models, debug}) => {  
     const [modelPath, setModelPath] = useState<string[]>(initialPath);
     console.log(models);
     return (
@@ -18,8 +19,10 @@ const CadViewer:React.FC<CADProps> = ({initialPath, models}) => {
             models = {models}
             modelPath={modelPath}
             setModelPath={setModelPath}
+            debug = {debug}
             />
             <ThreeScene 
+            debug = {debug}
             modelPath={modelPath}
             setModelPath={setModelPath}
             />

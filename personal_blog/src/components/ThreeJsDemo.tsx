@@ -10,13 +10,14 @@ import GUI from 'lil-gui' ;
 import Version from '@/components/Version';
 import axios from 'axios';
 import Info from '@/components/Info';
-
+import Loading from './Loading';
 
 
 
 interface threeProps {
   modelPath: string[];
   setModelPath: React.Dispatch<React.SetStateAction<string[]>>;
+  debug: boolean;
   // modelRef: MutableRefObject<string[]>;
 }
 
@@ -40,7 +41,7 @@ function easeInOutLerp(start: number, end: number, t: number): number {
 
 
 
-const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath}) => {
+const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false}) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -66,6 +67,8 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath}) => {
   const [selected, setSelected] = useState<THREE.Mesh | null>(null);
   const reverseRef = useRef(false);
   const rotationRef = useRef<THREE.Euler | null>(null);
+  const modelPathRef = useRef<string[] | null>(modelPath);
+  const [isLoading,setLoading] = useState(false);
 
   const loadSTL = (path: string): Promise<THREE.BufferGeometry> => {
     return new Promise((resolve, reject) => {
@@ -80,16 +83,31 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath}) => {
   };
 
   const loadModel = async (version:number) => {
+
     console.log('loading model', version);
     // console.log('loading model', version);
+    setLoading(true);
     axios.get('/api/getFiles',{
       params: {
-        folder: modelPath[version]
+        folder: modelPath[version],
+        debug: debug
       }
     }
     ).then( async (response) => {
-      const urls = response.data.filenames as string[];
-      const stls = urls.map((str) => { return str.split('.com/')[1]});
+      var urls:string[] = [];
+      var stls;
+      if (debug){
+        
+        urls = (response.data.filenames as string[]).map(str => str.split('public')[1]);
+        console.log('urls', urls)
+        stls = urls.map((str)=>{ return str.split('/')[str.split('/').length - 1]});
+        console.log(stls);
+      }
+      else{
+        urls = response.data.filenames as string[];
+        stls = urls.map((str) => { return str.split('.com/')[1]});
+      }
+    
       const groupname = `${version}`
       const group = new THREE.Group();
       group.name = groupname;
@@ -101,6 +119,8 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath}) => {
         // loader.load(modelPath[version].split("public")[1] + '/' + stls[i], (geometry) => {
         //const geometry = await loadSTL(modelPath[version].split("public")[1] + '/' + stls[i]);
         const geometry = await loadSTL(urls[i]);
+      
+
           if (sceneRef.current?.getObjectByName(stls[i]) !== undefined) {
 
             continueLoading = false;
@@ -124,6 +144,7 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath}) => {
             // console.log('coords ', x, y, z)
             const r = readVal(stls[i].split('-')[4]);
             const ry = readVal(stls[i].split('-')[5]);
+            const rx = readVal(stls[i].split('-')[6]);
             const ofs = readVal(stls[i].split('(')[1]);
             const zofs = readVal(stls[i].split('(')[2]);
             if (!isNaN(r)){
@@ -131,6 +152,9 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath}) => {
             }
             if (!isNaN(ry)){
               mesh.rotateY(ry * Math.PI / 180);
+            }
+            if (!isNaN(rx)){
+              mesh.rotateX(rx*Math.PI / 180);
             }
             
             mesh.position.set(x,y,z);
@@ -145,18 +169,17 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath}) => {
               geometry.applyMatrix4(matrix);
             }
             // guiRef.current?.add(mesh.position, 'y', -200, 200).name(`${stls[i]}_y`).step(1);
-            // if (modelPath[version].indexOf('robotleg/1') >= 0){
+            if (debug == true && urls[i].indexOf('testing') >=0){
 
-            // //   mesh.material.transparent = false;
-          
-            //   guiRef.current?.add(mesh.position, 'y', -300, 300).name(`${stls[i].split("-")[0]}_y`).step(1);
-            //   guiRef.current?.add(mesh.position, 'z', -300, 300).name(`${stls[i].split("-")[0]}_z`).step(1);
-            //   guiRef.current?.add(mesh.position, 'x', -300, 300).name(`${stls[i].split("-")[0]}_x`).step(1);
+            //   mesh.material.transparent = false;
+              guiRef.current?.add(mesh.position, 'y', -100, 200).name(`${stls[i].split("-")[0]}_y`).step(1);
+              guiRef.current?.add(mesh.position, 'z', -300, 300).name(`${stls[i].split("-")[0]}_z`).step(1);
+              guiRef.current?.add(mesh.position, 'x', -100, 100).name(`${stls[i].split("-")[0]}_x`).step(1);
 
-            //   guiRef.current?.add(mesh.rotation, 'y', -Math.PI, Math.PI).name(`${stls[i].split("-")[0]}_ry`).step(0.1);
-            //   guiRef.current?.add(mesh.rotation, 'z', -Math.PI, Math.PI).name(`${stls[i].split("-")[0]}_rz`).step(0.1);
-            //   guiRef.current?.add(mesh.rotation, 'x', -Math.PI, Math.PI).name(`${stls[i].split("-")[0]}_rx`).step(0.1);
-            // }
+              guiRef.current?.add(mesh.rotation, 'y', -Math.PI, Math.PI).name(`${stls[i].split("-")[0]}_ry`).step(0.1);
+              guiRef.current?.add(mesh.rotation, 'z', -Math.PI, Math.PI).name(`${stls[i].split("-")[0]}_rz`).step(0.1);
+              guiRef.current?.add(mesh.rotation, 'x', -Math.PI, Math.PI).name(`${stls[i].split("-")[0]}_rx`).step(0.1);
+            }
             // else if (modelPath[i].indexOf('ring_gear') >= 0){
             //   mesh.material.transparent = false;
             // }
@@ -175,6 +198,7 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath}) => {
         groupRef.current = group;
         group.rotateX(-Math.PI/2);
       }
+      setLoading(false);
     });
   }
   const removeModel = () => {
@@ -388,18 +412,30 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath}) => {
     }
     const rotateScene = (deltaX:number, deltaY:number) => {
       if (groupRef.current && !isNaN(deltaX) && !isNaN(deltaY)){
-        if (selectedRef.current){
+        if (modelPathRef.current && modelPathRef.current[0].indexOf('testingjig') >= 0){
+          const yAxis = new THREE.Vector3(0, 1, 0);
+          const zAxis = new THREE.Vector3(0, 0, 1);
+
+          groupRef.current.rotateOnWorldAxis(yAxis, deltaX/100);
+          groupRef.current.position.set(0,-mouseY/10 + 50,0);
+          // for (let i = 0; i < groupRef.current.children.length; i++){
+          //   if (groupRef.current.children[i].name.indexOf("stand") < 0){
+          //     (groupRef.current.children[i] as THREE.Mesh).translateOnAxis(zAxis, -deltaY);
+          //   }
+          // }
+
+        }
+        else if (selectedRef.current){
           const zAxis = groupRef.current.worldToLocal(new THREE.Vector3(0, 0, 1)).clone();
           const yAxis = groupRef.current.worldToLocal(new THREE.Vector3(0, 1, 0)).clone();
           selectedRef.current.rotateOnWorldAxis(yAxis, deltaX/100);
           selectedRef.current.rotateOnWorldAxis(zAxis, -deltaY/100);
 
-
         }
         else{
           const zAxis = new THREE.Vector3(0, 0, 1);
           const yAxis = new THREE.Vector3(0, 1, 0);
-          console.log('rotationg ', groupRef.current.rotation);
+          // console.log('rotationg ', groupRef.current.rotation);
           groupRef.current.rotateOnWorldAxis(yAxis, deltaX/100);
           groupRef.current.rotateOnWorldAxis(zAxis, -deltaY/100);
           
@@ -449,7 +485,10 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath}) => {
         if (true){
           //console.log( 'rotation angle ', groupRef.current.rotation)
           if (!downRef.current && !selectedRef.current){
-            groupRef.current.rotateOnWorldAxis(new THREE.Vector3(0,1,0), 0.001);
+            if (!debug){
+              groupRef.current.rotateOnWorldAxis(new THREE.Vector3(0,1,0), 0.001);
+            }
+            
           }
           for (let i = 0; i < groupRef.current.children.length; i++){
             const mesh = groupRef.current.children[i] as THREE.Mesh;
@@ -620,6 +659,7 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath}) => {
   }, []);
 
   useEffect(() => {
+    console.log('modelpath',modelPath);
     if (groupRef.current){
       console.log('resetting');
 
@@ -631,6 +671,7 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath}) => {
       loadModel(0);
       selectedRef.current = null;
       setSelected(null);
+      modelPathRef.current = modelPath;
 
     }
   },[modelPath]);
@@ -710,7 +751,7 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath}) => {
 
   return<>
     <div ref={mountRef}></div>
-    <div className="fixed z-30 text-3xl flex flex-wrap place-items-center bottom-[20%] left-1/2 transform -translate-x-1/2 gap-4">
+    <div className="fixed z-30 text-3xl flex flex-wrap place-items-center bottom-[20%] left-1/2 transform -translate-x-1/2 gap-4 text-white">
       
      { selected != null ? 
      (
@@ -744,7 +785,7 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath}) => {
     </div>
     {selected != null && <Info title={(selectedRef.current as THREE.Mesh).name}/>}
     {selected == null && <Version value={modelPath.length} sharedState={version} setSharedState={setVersion} sharedRef={versionRef}/>}
-
+    {isLoading && <Loading/>}
   </>;
 };
 
