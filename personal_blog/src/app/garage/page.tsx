@@ -8,7 +8,7 @@ export default async function Garage() {
 
   return (
     <main>
-      <CadViewer initialPath={filenames} models={models} debug={false} />
+      <CadViewer initialPath={filenames} models={models} debug={true} />
     </main>
   );
 }

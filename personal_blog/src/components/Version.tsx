@@ -30,7 +30,8 @@ const Version: React.FC<Props> = ({ value, sharedState, setSharedState, sharedRe
     }, [sharedState]);
     
     return (
-        <div className= "fixed w-1/2 z-30 bottom-[10%] left-1/2 transform -translate-x-1/2">
+        <div className= "fixed w-1/2 z-30 bottom-[10%] left-1/2 transform -translate-x-1/2 text-white" 
+        style = {{touchAction: "none"}}>
             <div className={"grid auto-cols-min min-h-0 min-w-0 place-items-center relative w-full"}
             style = {
                         {

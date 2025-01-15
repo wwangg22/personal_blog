@@ -1,5 +1,5 @@
 'use client'
-import React from 'react';
+import React, { RefObject, useEffect, useState } from 'react';
 import axios from 'axios';
 
 interface versionProps {
@@ -7,11 +7,14 @@ interface versionProps {
     modelPath: string[];
     setModelPath: React.Dispatch<React.SetStateAction<string[]>>;
     debug: boolean;
+    mobileRef: RefObject<boolean>;
     // modelRef: MutableRefObject<string[]>;
   }
 
-const Menu: React.FC<versionProps> = ({models, modelPath, setModelPath, debug}) => {
-    const handleClick = () => {
+const Menu: React.FC<versionProps> = ({models, modelPath, setModelPath, debug, mobileRef}) => {
+    const [thumbnails, setThumbnails] = useState<string[]>([]);
+    const handleClick = (event: React.MouseEvent) => {
+        event.preventDefault();
         const menu = document.getElementById("menu");
         if (menu){
             if (menu.style.transform == 'translateX(-110%)'){
@@ -33,6 +36,24 @@ const Menu: React.FC<versionProps> = ({models, modelPath, setModelPath, debug}) 
             
         }
     }
+    const autoClose = (event: MouseEvent) => {
+        const menu = document.getElementById("menu");
+        if (menu){
+            const rect = menu.getBoundingClientRect();
+            const isInsideMenu = event.clientX >= rect.left &&
+                                event.clientX <= rect.right &&
+                                event.clientY >= rect.top &&
+                                event.clientY <= rect.bottom;
+            if (!isInsideMenu) {
+                menu.style.transform = 'translateX(-110%)';
+                setTimeout(() => {
+                    if (menu.style.transform == 'translateX(-110%)'){
+                        menu.style.display = 'none';
+                    }
+                }, 1100);
+            }   
+        }
+    }   
     const getVersions = async (filepath:string) => {
         try {
             const response = await axios.get('/api/getFolders', { params: { folder: filepath, debug: debug } });
@@ -41,13 +62,31 @@ const Menu: React.FC<versionProps> = ({models, modelPath, setModelPath, debug}) 
             console.log(error);
         }
     }
-    console.log(models);
+    const getThumbnails = async () => {
+        try{
+            const response = await axios.get('/api/getFiles', { params: { folder: 'thumbnails/', debug: debug } });
+            return response;
+        }catch (error) {
+            console.log(error);
+        }
+    }
+    useEffect(() => {
+        window.addEventListener('click', autoClose);
+        getThumbnails().then((response) => {
+            setThumbnails(response?.data.filenames);
+        });
+        return () =>{
+            window.removeEventListener('click', autoClose);
+        }
+    }, []);
     return (
         <>
-            <div className="fixed top-[5%] z-30 w-[75px] h-[75px] rounded-xl bg-black cursor-pointer" 
+            <div className="fixed top-[15%] lg:top-[5%] z-30 w-[75px] h-[75px] rounded-xl bg-black cursor-pointer" 
+            
             onClick={handleClick}
             style = {{
-                left: 'calc(10% - 37.5px)'
+                left: 'calc(10% - 37.5px)',
+                touchAction: "none"
             }}
             >
             <div className="grid grid-rows-7 w-full h-full">
@@ -59,35 +98,48 @@ const Menu: React.FC<versionProps> = ({models, modelPath, setModelPath, debug}) 
             ))}
             </div>
         </div>
-        <div className="absolute h-full w-[20%] left-0 top-0 outline outline-1 outline-white bg-black transition-transform duration-1000 ease-in-out z-40" id="menu"
+        <div className="absolute h-full w-menu left-0 top-0 outline outline-1 outline-white bg-black transition-transform duration-1000 ease-in-out z-40" id="menu"
         style={{ transform: 'translateX(-110%)',
                 display: 'none',
+                touchAction: "none",
          }}
         >
             <div className="w-full h-full">
                 <div className="grid auto-cols-min place-items-center relative w-full grid-cols-4 h-[10%] mt-[5%]">
                     <div></div>
-                    <div className="col-span-2 text-3xl font-bold h-1/2 mt-1/2 flex flex-col justify-end h-24 cursor-pointer" onClick={handleClick}>
+                    <div className={`col-span-2 text-white text-3xl font-bold cursor-pointer ${mobileRef.current ? 'my-auto' : 'h-1/2 flex flex-col h-24 justify-end  mt-1/2'}`} onClick={handleClick}>
                         <h1>close</h1>
                     </div>
                     <div></div>
                 </div>
             <div className="h-[10px] w-full bg-white">
             </div>
-            <div className="grid grid-cols-2 gap-4 p-4">
+            <div className="grid grid-cols-2 gap-4 p-4 text-white">
                 {models ? Array.from({ length: models.length }).map((_, i) => (
                     <div
                     key={i}
-                    className={`h-[max(5vw,150px)] bg-white w-[75%] rounded-xl mx-auto`}
+                    className={`w-menuitem rounded-xl mx-auto cursor-pointer flex flex-col items-stretch p-[5px] hover:bg-[green]`}
                     onClick = {async ()=>{ 
                         const folders = await getVersions(models[i]);
                         if (folders[0] != modelPath[0]){
                             console.log('setting new one');
                             setModelPath(folders);
                         }
-                        
+                        const menu = document.getElementById("menu");
+                        if (menu){
+                            menu.style.transform = 'translateX(-110%)';
+                            setTimeout(() => {
+                                if (menu.style.transform == 'translateX(-110%)'){
+                                    menu.style.display = 'none';
+                                }
+                            }, 1000);
+                        }
+                    
                     }}
-                    >{models}</div>
+                    >
+                        {!debug && <img src = {thumbnails[i]}/>}
+                        <div className="text-center">{models[i].split("/")[models[i].split("/").length - 2]}</div>
+                    </div>
                 ))
                 :
                 <div></div>

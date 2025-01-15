@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   const folder = searchParams.get("folder");
   const local = searchParams.get("debug");
-  console.log('local', local);
+  // console.log('local', local);
   if (local == 'true' && typeof folder == "string"){
     var filenames: string[] = await getFolders(folder);
     return NextResponse.json({ foldernames: filenames }, { status: 200 });

@@ -1,6 +1,6 @@
 // modelPathonents/ThreeScene.js
 "use client"
-import { use, useEffect, useRef, useState, MutableRefObject } from 'react';
+import { use, useEffect, useRef, useState, MutableRefObject, RefObject } from 'react';
 import * as THREE from 'three';
 //import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
@@ -11,6 +11,12 @@ import Version from '@/components/Version';
 import axios from 'axios';
 import Info from '@/components/Info';
 import Loading from './Loading';
+import InfoTest from './InfoTest';
+import LearnMore from './LearnMore';
+import Title from './Title';
+import Image from 'next/image';
+import BasicFacts from './BasicFacts';
+import Test from './Test';
 
 
 
@@ -18,6 +24,8 @@ interface threeProps {
   modelPath: string[];
   setModelPath: React.Dispatch<React.SetStateAction<string[]>>;
   debug: boolean;
+  mobileRef: RefObject<boolean>;
+  models: string[];
   // modelRef: MutableRefObject<string[]>;
 }
 
@@ -41,7 +49,7 @@ function easeInOutLerp(start: number, end: number, t: number): number {
 
 
 
-const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false}) => {
+const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug=false, mobileRef}) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -59,7 +67,10 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
   const transitionProgressRef = useRef(transitionDuration);
   const spinTransitionDuration = 1;
   const spinTransitionProgressRef = useRef(spinTransitionDuration);
+  const learnmoreTransitionDuration = 0.5;
+  const learnmoreTransitionProgressRef = useRef(learnmoreTransitionDuration);
   const versionRef = useRef(0);
+  const [intersect, setIntersect] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
   const intersectRef = useRef<THREE.Intersection<THREE.Object3D<THREE.Object3DEventMap>>[]>([]);
   const downRef = useRef(false);
@@ -69,6 +80,16 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
   const rotationRef = useRef<THREE.Euler | null>(null);
   const modelPathRef = useRef<string[] | null>(modelPath);
   const [isLoading,setLoading] = useState(false);
+  const [learnMore, setLearnMore] = useState(false);
+  const learnMoreRef = useRef(false);
+  const originalRotationRef = useRef<THREE.Vector3 | null>(null);
+  const [basic, setBasic] = useState({});
+  const labelRef = useRef<HTMLDivElement>(null);
+  const coordsRef = useRef<[{x:number, y:number, name:string}] | null>(null);
+  const passive_rotationRef = useRef(true);
+  const [passiveRotation, setPassiveRotation] = useState(true);
+  const [unMount, setUnMount] = useState(true);
+  const iconRef = useRef<HTMLImageElement>(null);
 
   const loadSTL = (path: string): Promise<THREE.BufferGeometry> => {
     return new Promise((resolve, reject) => {
@@ -99,7 +120,7 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
       if (debug){
         
         urls = (response.data.filenames as string[]).map(str => str.split('public')[1]);
-        console.log('urls', urls)
+        // console.log('urls', urls)
         stls = urls.map((str)=>{ return str.split('/')[str.split('/').length - 1]});
         console.log(stls);
       }
@@ -132,7 +153,7 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
             material.metalness = 1;
             material.roughness = 0.6;
             material.transparent = true;
-            material.opacity = 0.3;
+            material.opacity = 0.7;
             const mesh = new THREE.Mesh(geometry, material);
             
             var x;
@@ -169,7 +190,7 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
               geometry.applyMatrix4(matrix);
             }
             // guiRef.current?.add(mesh.position, 'y', -200, 200).name(`${stls[i]}_y`).step(1);
-            if (debug == true && urls[i].indexOf('testing') >=0){
+            if (debug == true && urls[i].indexOf('garry') >=0){
 
             //   mesh.material.transparent = false;
               guiRef.current?.add(mesh.position, 'y', -100, 200).name(`${stls[i].split("-")[0]}_y`).step(1);
@@ -193,6 +214,10 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
       };
       if (continueLoading)
       {
+        if (groupRef.current != null){
+          removeModel();
+        }
+
         // console.log('adding')
         sceneRef.current?.add(group);
         groupRef.current = group;
@@ -200,6 +225,15 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
       }
       setLoading(false);
     });
+
+    axios.get('/api/getDescription',{
+      params: {
+        name: modelPath[version].split('/')[2] + modelPath[version].split('/')[3] + ".json",
+      }
+    }
+    ).then( (response) => {
+      setBasic(response.data.filenames);
+    })
   }
   const removeModel = () => {
     if (groupRef.current) {
@@ -221,6 +255,11 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
       groupRef.current = null;
     }
   }
+  const handleIconClick = () => {
+      
+      setPassiveRotation(!passiveRotation);
+      
+  };
   const handleFocus = (event: MouseEvent) => {
     if(intersectRef.current.length > 0){
       if (cameraRef.current && groupRef.current){
@@ -240,6 +279,7 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
         //object.position.set(200,-30,0);
         selectedRef.current = object;
         rotationRef.current = groupRef.current.rotation.clone();
+        setUnMount(false);
         setSelected(object);
         intersectRef.current = [];
         setSpin(false);
@@ -257,9 +297,12 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
 
   const handleBack = () =>{
     if (selectedRef.current && selected){
-      setSelected(null);
+      setUnMount(true);
     }
     reverseRef.current = true;
+    if (learnMore){
+      setLearnMore(false);
+    }
   }
 
   
@@ -268,7 +311,10 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
     const obj_position = new THREE.Vector3(200,-30,0);
 
     window.addEventListener('click', handleFocus);
-    if (!guiRef.current) guiRef.current = new GUI();
+    if (!guiRef.current && debug==true) {
+      guiRef.current = new GUI();
+      
+    }
     // Scene setup
     const scene = new THREE.Scene();
     sceneRef.current = scene;
@@ -327,43 +373,6 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
     spotlight3.lookAt(0,0,0);
     scene.add(spotlight5);
 
-    // let sky = new Sky();
-    // sky.scale.setScalar( 450000 );
-    // scene.add( sky );
-    // let sun = new THREE.Vector3();
-
-    // const elevation = 0.8;
-    // const azimuth = 180;
-    // const turbidity = 12.3;
-    // const rayleigh=1.964;
-    // const mieCoefficient=0.006;
-    // const mieDirectionalG = 0.52;
-  
-    // const phi = THREE.MathUtils.degToRad( 90 - elevation );
-    // const theta = THREE.MathUtils.degToRad( azimuth );
-    // sun.setFromSphericalCoords( 1, phi, theta );
-
-    
-    // sky.material.uniforms[ 'sunPosition' ].value.copy( sun );
-    // sky.material.uniforms[ 'turbidity' ].value = turbidity;
-    // sky.material.uniforms[ 'rayleigh' ].value = rayleigh;
-    // sky.material.uniforms[ 'mieCoefficient' ].value = mieCoefficient;
-    // sky.material.uniforms[ 'mieDirectionalG' ].value = mieDirectionalG;
-
-
-    // guiRef.current?.add(sky.material.uniforms[ 'turbidity' ], 'value', 0.1, 20, 0.1).name('turbidity');
-    // guiRef.current?.add(sky.material.uniforms[ 'rayleigh' ], 'value', 0.1, 4, 0.001).name('rayleigh');
-    // guiRef.current?.add(sky.material.uniforms[ 'mieCoefficient' ], 'value', 0.0001, 0.1, 0.0001).name('mieCoefficient');
-    // guiRef.current?.add(sky.material.uniforms[ 'mieDirectionalG' ], 'value', 0.1, 1, 0.001).name('mieDirectionalG');
-
-
-
-    // const rgbeLoader = new RGBELoader();
-    // rgbeLoader.load('/hilly_terrain_01_2k.hdr', (environmentMap)=>{
-    //   environmentMap.mapping = THREE.EquirectangularReflectionMapping;
-    //   scene.background = environmentMap;
-    //   scene.environment = environmentMap;
-    // })
     const pointer = new THREE.Vector2();
 
     const handleMouseMove = (event: MouseEvent) => {
@@ -386,7 +395,7 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
 
     camera.position.set(300,0,0);
     camera.lookAt(0,0,0);
-    // controls.update();
+    //controls.update();
     var prev = 0;
     var mouseX:number;
     var mouseY:number;
@@ -402,7 +411,7 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
     }
     const onMouseMove = (event: MouseEvent) => {
       event.preventDefault();
-      if (downRef.current){
+      if (downRef.current && !learnMoreRef.current){
         const deltaX = (event.clientX - mouseX)/2;
         const deltaY =(event.clientY - mouseY)/2;
         mouseX = event.clientX;
@@ -410,6 +419,8 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
         rotateScene(deltaX, deltaY);
       }
     }
+
+
     const rotateScene = (deltaX:number, deltaY:number) => {
       if (groupRef.current && !isNaN(deltaX) && !isNaN(deltaY)){
         if (modelPathRef.current && modelPathRef.current[0].indexOf('testingjig') >= 0){
@@ -443,11 +454,11 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
       }
     
   }
-  window.addEventListener('mousedown', onMouseDown);
-  window.addEventListener('mouseup', onMouseUp);
-  window.addEventListener('mousemove', onMouseMove);
-  const axesHelper = new THREE.AxesHelper( 5 );
-  scene.add( axesHelper );
+
+    window.addEventListener('mousedown', onMouseDown);
+    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener('mousemove', onMouseMove);
+    
     // Animation loop
     const animate = (time: number) => {
       // const internal = new THREE.Vector3(cursor.x * 2, cursor.y*2, 1.303)
@@ -458,6 +469,7 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
       
       transitionProgressRef.current += (time - prev)/1000;
       spinTransitionProgressRef.current += (time - prev)/3000;
+      learnmoreTransitionProgressRef.current += (time - prev)/3000;
       if (transitionProgressRef.current > transitionDuration){
         if (reverseRef.current && selectedRef.current && groupRef.current){
           groupRef.current.add(selectedRef.current);
@@ -478,6 +490,9 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
       if (spinTransitionProgressRef.current > spinTransitionDuration){
         spinTransitionProgressRef.current = spinTransitionDuration;
       }
+      if (learnmoreTransitionProgressRef.current > learnmoreTransitionDuration){
+        learnmoreTransitionProgressRef.current = learnmoreTransitionDuration;
+      }
 
       //console.log('transitionProgress', transitionProgressRef.current, 'transitionDuration', transitionDuration
 
@@ -485,15 +500,21 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
         if (true){
           //console.log( 'rotation angle ', groupRef.current.rotation)
           if (!downRef.current && !selectedRef.current){
-            if (!debug){
+            if (passive_rotationRef.current && !debug && !learnMoreRef.current){
               groupRef.current.rotateOnWorldAxis(new THREE.Vector3(0,1,0), 0.001);
             }
-            
+          }
+          if (learnMoreRef.current && originalRotationRef.current &&learnmoreTransitionProgressRef.current != learnmoreTransitionDuration ){
+
+            const lerp = easeInOutLerp(originalRotationRef.current.y,0, learnmoreTransitionProgressRef.current / learnmoreTransitionDuration);
+            const lerp2 = easeInOutLerp( originalRotationRef.current.x, -Math.PI / 2,learnmoreTransitionProgressRef.current / learnmoreTransitionDuration);
+            const lerp3 = easeInOutLerp(originalRotationRef.current.z, 0, learnmoreTransitionProgressRef.current / learnmoreTransitionDuration);
+
+            groupRef.current.rotation.set(lerp2,lerp,lerp3);
           }
           for (let i = 0; i < groupRef.current.children.length; i++){
             const mesh = groupRef.current.children[i] as THREE.Mesh;
             if (selectedRef.current){
-              console.log()
               if (mesh == selectedRef.current){
                 (mesh.material as THREE.Material).transparent = false;
               }
@@ -509,13 +530,19 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
             const current_z = readVal(name.split('-')[3]);
             const r = readVal(name.split('-')[4]);
             const ry = readVal(name.split('-')[5]);
+            var local_coords;
             if (selectedRef.current ){
               if (mesh == selectedRef.current){
                 //console.log("selected", selected, selectedRef.current);
                 if (!reverseRef.current){
                   if (transitionDuration != transitionProgressRef.current){
+                    if (!mobileRef.current){
+                      local_coords = groupRef.current.worldToLocal(new THREE.Vector3(180,20,0)).clone();
+                    }
+                    else{
+                      local_coords = groupRef.current.worldToLocal(new THREE.Vector3(130,50,0)).clone();
+                    }
 
-                    const local_coords = groupRef.current.worldToLocal(new THREE.Vector3(180,20,0)).clone();
                     const lerp = easeInOutLerp(future_y, local_coords.y, transitionProgressRef.current / transitionDuration);
                     const lerp2 = easeInOutLerp(current_x, local_coords.x, transitionProgressRef.current / transitionDuration);
                     const lerp3 = easeInOutLerp(current_z, local_coords.z, transitionProgressRef.current / transitionDuration);
@@ -527,7 +554,12 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
                 }
                 else{
                   if (transitionDuration != transitionProgressRef.current){
-                    const local_coords = groupRef.current.worldToLocal(new THREE.Vector3(180,20,0)).clone();
+                    if (!mobileRef.current){
+                      local_coords = groupRef.current.worldToLocal(new THREE.Vector3(180,20,0)).clone();
+                    }
+                    else{
+                      local_coords = groupRef.current.worldToLocal(new THREE.Vector3(130,50,0)).clone();
+                    }
                     const lerp = easeInOutLerp(local_coords.y,future_y, transitionProgressRef.current / transitionDuration);
                     const lerp2 = easeInOutLerp( local_coords.x, current_x,transitionProgressRef.current / transitionDuration);
                     const lerp3 = easeInOutLerp(local_coords.z, current_z, transitionProgressRef.current / transitionDuration);
@@ -545,7 +577,7 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
             else {
               if (expandedRef.current){
                 (mesh.material as THREE.Material).transparent = true;
-                (mesh.material as THREE.Material).opacity = 0.5;
+                (mesh.material as THREE.Material).opacity = 0.7;
                 if (transitionProgressRef.current != transitionDuration){
                   const lerp = easeInOutLerp(current_y, future_y, transitionProgressRef.current / transitionDuration);
                   
@@ -553,7 +585,7 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
                 }
                 else{
                   (mesh.material as THREE.Material).transparent = true;
-                  (mesh.material as THREE.Material).opacity = 0.5;
+                  (mesh.material as THREE.Material).opacity = 0.7;
                   if (transitionProgressRef.current != transitionDuration){
                     const lerp = easeInOutLerp(future_y, current_y, transitionProgressRef.current / transitionDuration);
                     
@@ -617,7 +649,7 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
             
           }
         }
-        if (expandedRef.current && !selectedRef.current && transitionProgressRef.current == transitionDuration && !downRef.current)
+        if (expandedRef.current && !selectedRef.current && transitionProgressRef.current == transitionDuration && !downRef.current && !learnMoreRef.current)
         {
           raycaster.setFromCamera( pointer, camera );
     
@@ -626,8 +658,25 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
           if (intersectRef.current.length > 0){
             //console.log('intersects', intersects[0].object.name);
             ((intersectRef.current[ 0 ].object as THREE.Mesh).material as THREE.Material).transparent= false;
+            setIntersect(intersectRef.current[0].object.name.split('-')[0].split('/')[intersectRef.current[0].object.name.split('-')[0].split('/').length-1]);
+            if (labelRef.current){
+              var location = new THREE.Vector3();
+              (intersectRef.current[0].object as THREE.Mesh).getWorldPosition(location);
+              if (cameraRef.current){
+                const ndc = location.project(cameraRef.current);
+                const x = ((ndc.x + 1) / (2)) * 100;
+                const y = ((-ndc.y + 1) / (2)) * 100;
+                labelRef.current.style.transform = `translateX(${x}vw) translateY(${y}vh)`;
+              }              
+    
+            }
+          }
+          else{
+            setIntersect(null);
           }
         }
+
+
       }
       
       prev = time;
@@ -646,23 +695,24 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
       if (animationFrameIdRef.current !== null) {
         cancelAnimationFrame(animationFrameIdRef.current);
       }
+        window.removeEventListener('mousedown', onMouseDown);
+        window.removeEventListener('mouseup', onMouseUp);
+        window.removeEventListener('mousemove', onMouseMove);
+
+        
       mountRef.current?.removeChild(renderer.domElement);
       window.removeEventListener('click', handleFocus);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('resize', onWindowResize);
-      window.removeEventListener('mousedown', onMouseDown);
-      window.removeEventListener('mouseup', onMouseUp);
-      window.removeEventListener('mousemove', onMouseMove);
+
+
 
 
     };
   }, []);
 
   useEffect(() => {
-    console.log('modelpath',modelPath);
     if (groupRef.current){
-      console.log('resetting');
-
       versionRef.current = 0;
       setVersion(0);
       setExpanded(false);
@@ -670,7 +720,7 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
       removeModel();
       loadModel(0);
       selectedRef.current = null;
-      setSelected(null);
+      setUnMount(true);
       modelPathRef.current = modelPath;
 
     }
@@ -705,6 +755,92 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
   }, [expanded]);
 
   useEffect(()=>{
+    const rotateScene = (deltaX:number, deltaY:number) => {
+      if (groupRef.current && !isNaN(deltaX) && !isNaN(deltaY)){
+        if (modelPathRef.current && modelPathRef.current[0].indexOf('testingjig') >= 0){
+          const yAxis = new THREE.Vector3(0, 1, 0);
+          const zAxis = new THREE.Vector3(0, 0, 1);
+
+          groupRef.current.rotateOnWorldAxis(yAxis, deltaX/100);
+          groupRef.current.position.set(0,-mouseY/10 + 50,0);
+          // for (let i = 0; i < groupRef.current.children.length; i++){
+          //   if (groupRef.current.children[i].name.indexOf("stand") < 0){
+          //     (groupRef.current.children[i] as THREE.Mesh).translateOnAxis(zAxis, -deltaY);
+          //   }
+          // }
+
+        }
+        else if (selectedRef.current){
+          const zAxis = groupRef.current.worldToLocal(new THREE.Vector3(0, 0, 1)).clone();
+          const yAxis = groupRef.current.worldToLocal(new THREE.Vector3(0, 1, 0)).clone();
+          selectedRef.current.rotateOnWorldAxis(yAxis, deltaX/100);
+          selectedRef.current.rotateOnWorldAxis(zAxis, -deltaY/100);
+
+        }
+        else{
+          const zAxis = new THREE.Vector3(0, 0, 1);
+          const yAxis = new THREE.Vector3(0, 1, 0);
+          // console.log('rotationg ', groupRef.current.rotation);
+          groupRef.current.rotateOnWorldAxis(yAxis, deltaX/100);
+          groupRef.current.rotateOnWorldAxis(zAxis, -deltaY/100);
+          
+        }
+      }
+    
+  }
+    const onTouchStart = (event: TouchEvent) => {
+      downRef.current = true;
+      console.log("touchstart");
+      if (event.touches.length > 0) {
+          const touch = event.touches[0];
+          mouseX = touch.clientX;
+          mouseY = touch.clientY;
+      }
+  };
+
+  const onTouchEnd = (event: TouchEvent) => {
+      downRef.current = false;
+  };
+
+  const onTouchMove = (event: TouchEvent) => {
+      if (downRef.current && event.touches.length > 0) {
+          const touch = event.touches[0];
+          const deltaX = (touch.clientX - mouseX) / 2;
+          const deltaY = (touch.clientY - mouseY) / 2;
+          mouseX = touch.clientX;
+          mouseY = touch.clientY;
+          rotateScene(deltaX, deltaY);
+      }
+  };
+
+    if (mobileRef){
+      var mouseX:number;
+      var mouseY:number;
+        
+      const options = { passive: false } as AddEventListenerOptions;
+      if (mountRef.current){
+
+        mountRef.current.addEventListener('touchstart', onTouchStart,options);
+        mountRef.current.addEventListener('touchmove',onTouchMove,options);
+        mountRef.current.addEventListener('touchend', onTouchEnd,options);
+      }
+    }
+    
+
+    return ()=>{
+      if (mobileRef){
+        const options = { passive: false } as AddEventListenerOptions;
+        if (mountRef.current){
+          mountRef.current.removeEventListener('touchstart', onTouchStart, options);
+          mountRef.current.removeEventListener('touchmove',onTouchMove,options);
+          mountRef.current.removeEventListener('touchend', onTouchEnd, options);
+        }
+      }
+      
+    }
+  }, [mountRef.current])
+
+  useEffect(()=>{
     if (groupRef.current){
       
       if (spinRef.current != spin){
@@ -720,6 +856,19 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
 
   },[spin])
 
+  useEffect(()=>{
+    if (transitionDuration == transitionProgressRef.current){
+      transitionProgressRef.current = 0;
+    }
+    else if (transitionDuration != transitionProgressRef.current){
+      transitionProgressRef.current = 1 - transitionProgressRef.current;
+    }
+    if (unMount){
+    setTimeout(()=> {
+      setSelected(null);
+    }, 1000)}
+  },[unMount])
+
   useEffect(() => {
     console.log('heyasda' , version);
     if (versionRef.current != version){
@@ -730,40 +879,102 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
       expandedRef.current = false;
       loadModel(version);
       selectedRef.current = null;
-      setSelected(null);
+      setUnMount(true);
     }
-    
   }, [version]);
 
   useEffect(()=> {
-    if (transitionDuration == transitionProgressRef.current){
-      transitionProgressRef.current = 0;
-    }
-    else if (transitionDuration != transitionProgressRef.current){
-      transitionProgressRef.current = 1 - transitionProgressRef.current;
-    }
     // if (rotationRef != null){
     //   groupRef.current?.rotation.set(0,0,0);
     // }
 
   },[selected])
 
+  useEffect(()=>{
+    learnMoreRef.current = learnMore;
+    if (learnMore && groupRef.current){
+      setExpanded(true);
+      learnmoreTransitionProgressRef.current = 0;
+      const quaternion = new THREE.Quaternion();
+      // Get the world matrix
+      const worldMatrix = groupRef.current.matrixWorld;
+
+      // Decompose the world matrix to extract rotation
+      worldMatrix.decompose(new THREE.Vector3(), quaternion, new THREE.Vector3());
+
+      // If you need to convert the quaternion to Euler angles
+      const euler = new THREE.Euler();
+      euler.setFromQuaternion(quaternion, 'XYZ'); // or any other order you prefer
+
+      // Now you have the rotation in Euler angles
+      console.log('Rotation in radians: ', euler.x, euler.y, euler.z);
+
+      originalRotationRef.current = new THREE.Vector3(euler.x, euler.y, euler.z);
+      var lis: [{x:number, y:number, name:string}]  = [{x:0, y:0, name:'test'}];
+      for (let i = 0; i < groupRef.current.children.length; i++){
+        const mesh = groupRef.current.children[i] as THREE.Mesh;
+        const name = mesh.name;
+        const y = readVal(name.split('_')[1]);
+        const x = readVal(name.split('-')[1]);
+        const z = readVal(name.split('-')[3]);
+        const coords = new THREE.Vector3(x,y,z);
+
+        if (cameraRef.current){
+          const ndc = coords.project(cameraRef.current);
+
+          const width = window.innerWidth;
+          const height = window.innerHeight;
+
+          const screenCoordinates = {
+            x: ((ndc.y/cameraRef.current.aspect + 1) / (2)) * 100,
+            y: ((ndc.x * cameraRef.current.aspect + 1) / (2)) * 100,
+            name: mesh.name.split("/")[mesh.name.split("/").length - 1].split("-")[0],
+          };
+          console.log('aspect ', cameraRef.current.aspect);
+          lis.push(screenCoordinates);
+        }
+
+      }
+      coordsRef.current = lis;
+      
+    
+    }
+    else if (!learnMore){
+      originalRotationRef.current = null;
+      setExpanded(false);
+    }
+  }, [learnMore])
+
+  useEffect(()=>{
+    passive_rotationRef.current = passiveRotation;
+    console.log('rotate', passive_rotationRef.current);
+  },[passiveRotation])
+
 
   return<>
-    <div ref={mountRef}></div>
-    <div className="fixed z-30 text-3xl flex flex-wrap place-items-center bottom-[20%] left-1/2 transform -translate-x-1/2 gap-4 text-white">
-      
-     { selected != null ? 
+    <div ref={mountRef} style={{touchAction: "none"}}></div>
+    <div style={{touchAction: "none"}} className="fixed z-30 text-3xl flex flex-wrap place-items-center bottom-[20%] left-1/2 transform -translate-x-1/2 gap-4 text-white">
+      {
+        selected != null || learnMore ?
+        <button className={`w-[14rem] h-[4rem] bg-[green] rounded-full ${mobileRef.current ? 'absolute left-1/2 transform -translate-x-1/2 bottom-[-10vh]' : ''}`}
+        onClick={handleBack}>
+          back
+        </button>
+        :
+        <div></div>
+      }
+     {/* { selected != null || learnMore ? 
      (
       <>
-        <button className="w-[14rem] h-[4rem] bg-[green] rounded-full"
+        <button className={`w-[14rem] h-[4rem] bg-[green] rounded-full ${mobileRef.current ? 'absolute left-1/2 transform -translate-x-1/2 bottom-[-10vh]' : ''}`}
         onClick={handleBack}>
           back
         </button>
       </>
      )
      :
-     modelPath[0].indexOf('actuator') >= 0 ? 
+     <>
+     {modelPath[0].indexOf('actuator') >= 0 ? 
       (
         <>
         <button className = "w-[14rem] h-[4rem] bg-[green] rounded-full"onClick={() => {
@@ -777,13 +988,83 @@ const ThreeScene:React.FC<threeProps> = ({modelPath, setModelPath, debug=false})
               }
           }
             }>{spin ? 'stop' : 'run'}</button>
+            
         </>
+        
       ) : (
         <div></div>
       )}
+      <button className = "w-[14rem] h-[4rem] bg-[green] rounded-full"onClick={() => {
+        if (!learnMoreRef.current)
+          {
+            setLearnMore(true);
+          }
+      }
+        }>learn more
+        </button>
+      </>
+      } */}
     
     </div>
-    {selected != null && <Info title={(selectedRef.current as THREE.Mesh).name}/>}
+
+    {selected == null && !mobileRef.current && <BasicFacts
+    data = {basic}
+    />}
+    <div className = "absolute top-0 left-0 w-full h-[20%] flex flex-col items-center justify-center">
+        <div className="text-titlexl lg:text-title_large">{modelPath[0].split('/')[2]}</div>
+       {
+        <div className="relative flex items-center gap-3 justify-center">
+          <div className="w-[60px] h-[60px] flex items-center justify-center">
+            {selected == null && (passiveRotation ?
+            <Image onClick = {handleIconClick} src={"/icons/stationary.svg"} alt={"stop rotating"} 
+            width={40}
+            height={40}
+            className="cursor-pointer"/>
+            : 
+            <Image onClick = {handleIconClick} src={"/icons/rotate.svg"} alt={"rotate"} 
+            width={60}
+            height={60}
+            className="cursor-pointer"/>)
+            }
+          </div>
+          {
+            modelPath[0].indexOf('actuator') >= 0 ? 
+            <div className="w-[60px] h-[60px] flex items-center justify-center">
+          {
+            selected == null && (expanded ?
+            <Image onClick = {()=>{
+              if (selectedRef.current ==null)
+                {setExpanded(!expanded)}
+            }} src={"/icons/collapse.svg"} alt={"collapse"} 
+            width={40}
+            height={40}
+            className="cursor-pointer"/>
+            :
+            <Image onClick = {()=>{
+              if (selectedRef.current ==null)
+                {setExpanded(!expanded)}
+            }} src={"/icons/expand.svg"} alt={"expand"} 
+            width={40}
+            height={40}
+            className="cursor-pointer"/>)
+          }
+          </div>
+          :
+          null
+
+          }
+          
+        </div>}
+        
+    </div>
+    {/* {learnMore && coordsRef.current && <Test coords = {coordsRef.current}/>} */}
+    {
+      <div
+        ref = {labelRef}
+        className = {`pointer-events-none absolute rounded-lg width-[20%] height-[20%] p-1 bg-[#ffffff70] text-black top-0 left-0 transition-opacity duration-500 ease-in-out ${intersect && selected == null ? 'opacity-100' : 'opacity-0'}`}
+        >{intersect}</div>}
+    {selected != null && <Info title={selected.name} mobileRef={mobileRef} unMount= {unMount}/>}
+    {/* <Info title={'test'} mobileRef={mobileRef}/> */}
     {selected == null && <Version value={modelPath.length} sharedState={version} setSharedState={setVersion} sharedRef={versionRef}/>}
     {isLoading && <Loading/>}
   </>;

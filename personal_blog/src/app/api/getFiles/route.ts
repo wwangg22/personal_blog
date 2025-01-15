@@ -27,11 +27,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ filenames: filenames }, { status: 200 });
   }
 
-  // console.log('folder', folder);
-
-  // if (typeof folder === 'string'){
-  //     var filenames:string[] = await getFiles(folder);
-  //     console.log('filenames', filenames);
-  //     return NextResponse.json({ filenames: filenames }, { status: 200})
-  // }
 }
