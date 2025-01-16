@@ -17,7 +17,8 @@ import Title from './Title';
 import Image from 'next/image';
 import BasicFacts from './BasicFacts';
 import Test from './Test';
-
+import {loadSTL, loadModel, LoadModelDependencies, removeModel, readVal} from './ThreeJsHelpers'
+import { easeInOutLerp, handleAnimation, HandleAnimationDependencies} from './ThreeJsInteractive';
 
 
 interface threeProps {
@@ -29,23 +30,9 @@ interface threeProps {
   // modelRef: MutableRefObject<string[]>;
 }
 
-const readVal = (name: string | undefined) => {
-  if (name === undefined){
-    return 0;
-  }
-  if (!isNaN(parseInt(name))){
-    return parseInt(name);
-  }
-  if (name[0] == 'n'){
-    return -parseInt(name.split('n')[1]);
-  }
-  else return 0;
-}
 
-function easeInOutLerp(start: number, end: number, t: number): number {
-  t = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-  return start + (end - start) * t;
-}
+
+
 
 
 
@@ -91,170 +78,16 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
   const [unMount, setUnMount] = useState(true);
   const iconRef = useRef<HTMLImageElement>(null);
 
-  const loadSTL = (path: string): Promise<THREE.BufferGeometry> => {
-    return new Promise((resolve, reject) => {
-      const loader:any = new STLLoader();
-      loader.load(
-        path,
-        (geometry: THREE.BufferGeometry) => resolve(geometry),
-        undefined,
-        (error: any) => reject(error)
-      );
-    });
-  };
+  const originalRotation = useRef(new THREE.Quaternion());
+  const slightlyRotating = useRef(new THREE.Quaternion());
+  const dataRef = useRef<Record<string, any> | null>(null);
+  const storyRef = useRef(false);
+  const [storyState, setStoryState] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const loadModel = async (version:number) => {
+  const scrollMulti = 1.0;
+  const initialCamera = new THREE.Vector3(300, 0 ,0);
 
-    console.log('loading model', version);
-    // console.log('loading model', version);
-    setLoading(true);
-    axios.get('/api/getFiles',{
-      params: {
-        folder: modelPath[version],
-        debug: debug
-      }
-    }
-    ).then( async (response) => {
-      var urls:string[] = [];
-      var stls;
-      if (debug){
-        
-        urls = (response.data.filenames as string[]).map(str => str.split('public')[1]);
-        // console.log('urls', urls)
-        stls = urls.map((str)=>{ return str.split('/')[str.split('/').length - 1]});
-        console.log(stls);
-      }
-      else{
-        urls = response.data.filenames as string[];
-        stls = urls.map((str) => { return str.split('.com/')[1]});
-      }
-    
-      const groupname = `${version}`
-      const group = new THREE.Group();
-      group.name = groupname;
-      let continueLoading = true;
-      // console.log(stls);
-      const loader: any = new STLLoader();
-      for (let i = 0; i < stls.length; i++) {
-        
-        // loader.load(modelPath[version].split("public")[1] + '/' + stls[i], (geometry) => {
-        //const geometry = await loadSTL(modelPath[version].split("public")[1] + '/' + stls[i]);
-        const geometry = await loadSTL(urls[i]);
-      
-
-          if (sceneRef.current?.getObjectByName(stls[i]) !== undefined) {
-
-            continueLoading = false;
-            return
-          }
-          if (continueLoading)
-          {
-            const material = new THREE.MeshPhysicalMaterial({ color: 0xffffff });
-            material.metalness = 1;
-            material.roughness = 0.6;
-            material.transparent = true;
-            material.opacity = 0.7;
-            const mesh = new THREE.Mesh(geometry, material);
-            
-            var x;
-            var y;
-            var z; 
-            x = readVal(stls[i].split('-')[1]);
-            y = readVal(stls[i].split('-')[2]);
-            z = readVal(stls[i].split('-')[3]);
-            // console.log('coords ', x, y, z)
-            const r = readVal(stls[i].split('-')[4]);
-            const ry = readVal(stls[i].split('-')[5]);
-            const rx = readVal(stls[i].split('-')[6]);
-            const ofs = readVal(stls[i].split('(')[1]);
-            const zofs = readVal(stls[i].split('(')[2]);
-            if (!isNaN(r)){
-              mesh.rotateZ(r * Math.PI / 180);
-            }
-            if (!isNaN(ry)){
-              mesh.rotateY(ry * Math.PI / 180);
-            }
-            if (!isNaN(rx)){
-              mesh.rotateX(rx*Math.PI / 180);
-            }
-            
-            mesh.position.set(x,y,z);
-            mesh.name = stls[i];
-            group.add(mesh);
-            geometry.center();
-            if (ofs != 0 || zofs != 0){
-              const matrix = new THREE.Matrix4();
-  
-              // Example: Translate the geometry by (1, 2, 3)
-              matrix.makeTranslation(ofs, 0, zofs);
-              geometry.applyMatrix4(matrix);
-            }
-            // guiRef.current?.add(mesh.position, 'y', -200, 200).name(`${stls[i]}_y`).step(1);
-            if (debug == true && urls[i].indexOf('garry') >=0){
-
-            //   mesh.material.transparent = false;
-              guiRef.current?.add(mesh.position, 'y', -100, 200).name(`${stls[i].split("-")[0]}_y`).step(1);
-              guiRef.current?.add(mesh.position, 'z', -300, 300).name(`${stls[i].split("-")[0]}_z`).step(1);
-              guiRef.current?.add(mesh.position, 'x', -100, 100).name(`${stls[i].split("-")[0]}_x`).step(1);
-
-              guiRef.current?.add(mesh.rotation, 'y', -Math.PI, Math.PI).name(`${stls[i].split("-")[0]}_ry`).step(0.1);
-              guiRef.current?.add(mesh.rotation, 'z', -Math.PI, Math.PI).name(`${stls[i].split("-")[0]}_rz`).step(0.1);
-              guiRef.current?.add(mesh.rotation, 'x', -Math.PI, Math.PI).name(`${stls[i].split("-")[0]}_rx`).step(0.1);
-            }
-            // else if (modelPath[i].indexOf('ring_gear') >= 0){
-            //   mesh.material.transparent = false;
-            // }
-            // else if (modelPath[i].indexOf('sun_spiral') >= 0){
-            //   mesh.material.transparent = false;
-            // }
-            //console.log(sceneRef.current?.children);
-            // }
-          }
-        // });
-      };
-      if (continueLoading)
-      {
-        if (groupRef.current != null){
-          removeModel();
-        }
-
-        // console.log('adding')
-        sceneRef.current?.add(group);
-        groupRef.current = group;
-        group.rotateX(-Math.PI/2);
-      }
-      setLoading(false);
-    });
-
-    axios.get('/api/getDescription',{
-      params: {
-        name: modelPath[version].split('/')[2] + modelPath[version].split('/')[3] + ".json",
-      }
-    }
-    ).then( (response) => {
-      setBasic(response.data.filenames);
-    })
-  }
-  const removeModel = () => {
-    if (groupRef.current) {
-      //console.log('tryihng to remove');
-      //console.log('scene', sceneRef.current.children);
-      for (let i = 0; i < groupRef.current.children.length; i++){
-        const mesh = groupRef.current.children[i] as THREE.Mesh;
-       
-        mesh.geometry.dispose();
-        if (Array.isArray(mesh.material)) {
-          mesh.material.forEach((material) => material.dispose());
-        } else {
-          mesh.material.dispose();
-        }
-        sceneRef.current?.remove(mesh);
-        console.log('removed');
-      }
-      sceneRef.current?.remove(groupRef.current);
-      groupRef.current = null;
-    }
-  }
   const handleIconClick = () => {
       
       setPassiveRotation(!passiveRotation);
@@ -294,6 +127,9 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
       }
     }
   }
+  const handleScroll = () => {
+
+  }
 
   const handleBack = () =>{
     if (selectedRef.current && selected){
@@ -304,8 +140,8 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
       setLearnMore(false);
     }
   }
+  const cameraTarget = useRef<{ x: number; y: number; z: number }>({ x: 0, y: 0, z: 0 });
 
-  
   useEffect(() => {
 
     const obj_position = new THREE.Vector3(200,-30,0);
@@ -318,11 +154,23 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
     // Scene setup
     const scene = new THREE.Scene();
     sceneRef.current = scene;
-    
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     cameraRef.current = camera;
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     rendererRef.current = renderer;
+    // cameraRef.current.lookAt(cameraTarget.current.x, cameraTarget.current.y, cameraTarget.current.z);
+
+
+    if (debug){
+
+      guiRef.current?.add(camera.position, 'y', -300, 300).name(`camera_y`).step(1);
+      guiRef.current?.add(camera.position, 'z', -300, 300).name(`camera_z`).step(1);
+      guiRef.current?.add(camera.position, 'x', -300, 300).name(`camera_x`).step(1);
+
+      guiRef.current?.add(cameraTarget.current, 'x', -200, 200).name('LookAt X');
+      guiRef.current?.add(cameraTarget.current, 'y', -200,200).name('LookAt Y');
+      guiRef.current?.add(cameraTarget.current, 'z', -200, 200).name('LookAt Z');
+    }
 
     const gradientTexture = new THREE.TextureLoader().load('/3.jpg');
     gradientTexture.minFilter = THREE.NearestFilter;
@@ -359,18 +207,18 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
     spotlight2.lookAt(0,0,0);
     scene.add(spotlight2);
 
-    const spotlight3= new THREE.SpotLight(0xffffff, 200, 2000, Math.PI/2, 1, 1);
-    spotlight3.position.set(0, 200, 0);
+    const spotlight3= new THREE.SpotLight(0xffffff, 400, 2000, Math.PI/2, 1, 1);
+    spotlight3.position.set(0, 300, 0);
     spotlight3.lookAt(0,0,0);
     scene.add(spotlight3);
 
-    const spotlight4= new THREE.SpotLight(0xffffff, 200, 2000, Math.PI/2, 1, 1);
-    spotlight3.position.set(0, 0, 200);
-    spotlight3.lookAt(0,0,0);
+    const spotlight4= new THREE.SpotLight(0xffffff, 400, 2000, Math.PI/2, 1, 1);
+    spotlight4.position.set(-166, 100, 300);
+    spotlight4.lookAt(0,0,0);
     scene.add(spotlight4);
-    const spotlight5= new THREE.SpotLight(0xffffff, 200, 2000, Math.PI/2, 1, 1);
-    spotlight3.position.set(0, 0, -200);
-    spotlight3.lookAt(0,0,0);
+    const spotlight5= new THREE.SpotLight(0xffffff, 400, 2000, Math.PI/2, 1, 1);
+    spotlight5.position.set(0, 0, -200);
+    spotlight5.lookAt(0,0,0);
     scene.add(spotlight5);
 
     const pointer = new THREE.Vector2();
@@ -379,21 +227,36 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
       pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
       pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
     };
-    window.addEventListener('mousemove', handleMouseMove);
+    // if (!debug){
+      window.addEventListener('mousemove', handleMouseMove);
+    // }
+
 
     const raycaster = new THREE.Raycaster();
 
     //const controls = new OrbitControls( camera, renderer.domElement );
     //controlsRef.current = controls;
     // Load STL file
-    loadModel(version);
-    console.log('scene num', scene.children);
+    var loadmodeldepend: LoadModelDependencies = {
+      setLoading: setLoading,
+      modelPath: modelPath,
+      debug: debug,
+      sceneRef: sceneRef,
+      guiRef: guiRef,
+      groupRef: groupRef, 
+      setBasic: setBasic,
+      dataRef: dataRef,
+      originalRotation: originalRotation,
+      slightlyRotating: slightlyRotating
+    }
+    loadModel(version, loadmodeldepend);
+    // originalRotation.current.copy(groupRef.current!.quaternion);
 
+    console.log('scene num', scene.children);
     //   // Center the object
     //   geometry.center();
     // });
-
-    camera.position.set(300,0,0);
+    camera.position.copy(initialCamera);
     camera.lookAt(0,0,0);
     //controls.update();
     var prev = 0;
@@ -420,13 +283,11 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
       }
     }
 
-
     const rotateScene = (deltaX:number, deltaY:number) => {
-      if (groupRef.current && !isNaN(deltaX) && !isNaN(deltaY)){
+      if (groupRef.current && !isNaN(deltaX) && !isNaN(deltaY) && !storyRef.current){
         if (modelPathRef.current && modelPathRef.current[0].indexOf('testingjig') >= 0){
           const yAxis = new THREE.Vector3(0, 1, 0);
           const zAxis = new THREE.Vector3(0, 0, 1);
-
           groupRef.current.rotateOnWorldAxis(yAxis, deltaX/100);
           groupRef.current.position.set(0,-mouseY/10 + 50,0);
           // for (let i = 0; i < groupRef.current.children.length; i++){
@@ -434,14 +295,12 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
           //     (groupRef.current.children[i] as THREE.Mesh).translateOnAxis(zAxis, -deltaY);
           //   }
           // }
-
         }
         else if (selectedRef.current){
           const zAxis = groupRef.current.worldToLocal(new THREE.Vector3(0, 0, 1)).clone();
           const yAxis = groupRef.current.worldToLocal(new THREE.Vector3(0, 1, 0)).clone();
           selectedRef.current.rotateOnWorldAxis(yAxis, deltaX/100);
           selectedRef.current.rotateOnWorldAxis(zAxis, -deltaY/100);
-
         }
         else{
           const zAxis = new THREE.Vector3(0, 0, 1);
@@ -454,18 +313,102 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
       }
     
   }
+  window.addEventListener('scroll', handleScroll);
 
+  // if (!debug){
+    
     window.addEventListener('mousedown', onMouseDown);
     window.addEventListener('mouseup', onMouseUp);
     window.addEventListener('mousemove', onMouseMove);
-    
+  // }
+
+    const currentLookAt = new THREE.Vector3();
+
     // Animation loop
     const animate = (time: number) => {
       // const internal = new THREE.Vector3(cursor.x * 2, cursor.y*2, 1.303)
       // const test2 = new THREE.Vector3(internal.x, internal.y,internal.z)
       // raycaster.setFromCamera(test2,camera)
       requestAnimationFrame(animate);
+      //making sure when the user fiddles with an object, it returns to the upright position
+      if (groupRef.current && storyRef.current){
+        groupRef.current.quaternion.slerp(originalRotation.current, 0.02);
+      }
+      else if (groupRef.current && !downRef.current) {
+        groupRef.current.quaternion.slerp(slightlyRotating.current, 0.02);
+      }
+      //this is for making sure the camera is stays at its original position when storymode is off
+      if (!storyRef.current){
+        if (cameraRef.current) cameraRef.current.position.lerp(initialCamera, 0.03);
+      }
+      cameraRef.current?.lookAt(cameraTarget.current.x, cameraTarget.current.y, cameraTarget.current.z);
       //console.log(versionRef.current);
+      if (storyRef.current && dataRef.current && dataRef.current.camera_positions && dataRef.current.camera_positions.length >=2){
+        const cameraPositions = dataRef.current.camera_positions;
+        const numTransitions = cameraPositions.length - 1;
+
+        const scrollElement = scrollRef.current;
+        if (scrollElement) {
+          const scrollTop = scrollElement.scrollTop;
+          const viewportHeight = window.innerHeight * scrollMulti;
+          const scrollHeight = scrollElement.scrollHeight - scrollElement.clientHeight;
+
+          // Calculate how many full 100vh segments fit into the current scrollHeight
+          const availableTransitions = numTransitions
+          // console.log('avaialbe ', availableTransitions);
+
+          // Total scroll range dedicated to transitions
+          const totalTransitionScroll = availableTransitions *viewportHeight;
+
+          // Current scroll position within the transition range
+          const currentScroll = Math.min(scrollTop, totalTransitionScroll);
+
+          // Determine the current transition segment
+          const currentSegment = Math.floor(currentScroll / viewportHeight);
+          // Local interpolation factor within the current segment
+          const t = (currentScroll % viewportHeight) / viewportHeight;
+
+          if (currentSegment < availableTransitions) {
+            const currentPos = cameraPositions[currentSegment];
+            const nextPos = cameraPositions[currentSegment + 1];
+
+            // Create Vector3 instances for start and end positions
+            const startPos = new THREE.Vector3(
+              currentPos.position[0],
+              currentPos.position[1],
+              currentPos.position[2]
+            );
+            const endPos = new THREE.Vector3(
+              nextPos.position[0],
+              nextPos.position[1],
+              nextPos.position[2]
+            );
+
+            // Create Vector3 instances for start and end lookAt positions
+            const startLookAt = new THREE.Vector3(
+              currentPos.lookAt[0],
+              currentPos.lookAt[1],
+              currentPos.lookAt[2]
+            );
+            const endLookAt = new THREE.Vector3(
+              nextPos.lookAt[0],
+              nextPos.lookAt[1],
+              nextPos.lookAt[2]
+            );
+
+            // Apply easing to t if desired (optional)
+            // Example using a simple ease-in-out function
+            const easedT = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+
+            // Interpolate camera position
+            camera.position.lerpVectors(startPos, endPos, easedT);
+
+            // Interpolate lookAt target
+            currentLookAt.lerpVectors(startLookAt, endLookAt, easedT);
+            camera.lookAt(currentLookAt);
+          }
+        }
+      }
       
       transitionProgressRef.current += (time - prev)/1000;
       spinTransitionProgressRef.current += (time - prev)/3000;
@@ -494,14 +437,16 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
         learnmoreTransitionProgressRef.current = learnmoreTransitionDuration;
       }
 
-      //console.log('transitionProgress', transitionProgressRef.current, 'transitionDuration', transitionDuration
-
       if (groupRef.current != null){
         if (true){
           //console.log( 'rotation angle ', groupRef.current.rotation)
-          if (!downRef.current && !selectedRef.current){
-            if (passive_rotationRef.current && !debug && !learnMoreRef.current){
-              groupRef.current.rotateOnWorldAxis(new THREE.Vector3(0,1,0), 0.001);
+          if (!downRef.current && !selectedRef.current && !storyRef.current){
+            if (passive_rotationRef.current && !learnMoreRef.current){
+              const rotationIncrement = new THREE.Quaternion();
+              rotationIncrement.setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0.001); // small rotation around the Y-axis
+
+              // Apply this small rotation to the originalRotation quaternion
+              slightlyRotating.current.multiplyQuaternions(rotationIncrement, slightlyRotating.current);
             }
           }
           if (learnMoreRef.current && originalRotationRef.current &&learnmoreTransitionProgressRef.current != learnmoreTransitionDuration ){
@@ -512,142 +457,21 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
 
             groupRef.current.rotation.set(lerp2,lerp,lerp3);
           }
-          for (let i = 0; i < groupRef.current.children.length; i++){
-            const mesh = groupRef.current.children[i] as THREE.Mesh;
-            if (selectedRef.current){
-              if (mesh == selectedRef.current){
-                (mesh.material as THREE.Material).transparent = false;
-              }
-              else{
-                (mesh.material as THREE.Material).transparent = true;
-                (mesh.material as THREE.Material).opacity = 0.0;
-              }
-            }
-            const name = mesh.name;
-            const future_y = readVal(name.split('_')[1]);
-            const current_y = readVal(name.split('-')[2]);
-            const current_x = readVal(name.split('-')[1]);
-            const current_z = readVal(name.split('-')[3]);
-            const r = readVal(name.split('-')[4]);
-            const ry = readVal(name.split('-')[5]);
-            var local_coords;
-            if (selectedRef.current ){
-              if (mesh == selectedRef.current){
-                //console.log("selected", selected, selectedRef.current);
-                if (!reverseRef.current){
-                  if (transitionDuration != transitionProgressRef.current){
-                    if (!mobileRef.current){
-                      local_coords = groupRef.current.worldToLocal(new THREE.Vector3(180,20,0)).clone();
-                    }
-                    else{
-                      local_coords = groupRef.current.worldToLocal(new THREE.Vector3(130,50,0)).clone();
-                    }
 
-                    const lerp = easeInOutLerp(future_y, local_coords.y, transitionProgressRef.current / transitionDuration);
-                    const lerp2 = easeInOutLerp(current_x, local_coords.x, transitionProgressRef.current / transitionDuration);
-                    const lerp3 = easeInOutLerp(current_z, local_coords.z, transitionProgressRef.current / transitionDuration);
-
-                    selectedRef.current.position.y = lerp;
-                    selectedRef.current.position.x = lerp2;
-                    selectedRef.current.position.z = lerp3;
-                  }
-                }
-                else{
-                  if (transitionDuration != transitionProgressRef.current){
-                    if (!mobileRef.current){
-                      local_coords = groupRef.current.worldToLocal(new THREE.Vector3(180,20,0)).clone();
-                    }
-                    else{
-                      local_coords = groupRef.current.worldToLocal(new THREE.Vector3(130,50,0)).clone();
-                    }
-                    const lerp = easeInOutLerp(local_coords.y,future_y, transitionProgressRef.current / transitionDuration);
-                    const lerp2 = easeInOutLerp( local_coords.x, current_x,transitionProgressRef.current / transitionDuration);
-                    const lerp3 = easeInOutLerp(local_coords.z, current_z, transitionProgressRef.current / transitionDuration);
-
-                    selectedRef.current.position.y = lerp;
-                    selectedRef.current.position.x = lerp2;
-                    selectedRef.current.position.z = lerp3;
-                  }
-                    if (!isNaN(r) && !isNaN(ry)){
-                      mesh.rotation.set(0,ry * Math.PI / 180, r * Math.PI / 180);
-                    }
-                  }
-                }
-            }
-            else {
-              if (expandedRef.current){
-                (mesh.material as THREE.Material).transparent = true;
-                (mesh.material as THREE.Material).opacity = 0.7;
-                if (transitionProgressRef.current != transitionDuration){
-                  const lerp = easeInOutLerp(current_y, future_y, transitionProgressRef.current / transitionDuration);
-                  
-                  mesh.position.y = lerp;};
-                }
-                else{
-                  (mesh.material as THREE.Material).transparent = true;
-                  (mesh.material as THREE.Material).opacity = 0.7;
-                  if (transitionProgressRef.current != transitionDuration){
-                    const lerp = easeInOutLerp(future_y, current_y, transitionProgressRef.current / transitionDuration);
-                    
-                    mesh.position.y = lerp;
-                }
-              }
-            } 
-            
-            if (spinRef.current){
-              if (mesh.name.indexOf('sun') >= 0){
-                if (spinTransitionProgressRef.current == spinTransitionDuration){
-                  mesh.rotateY(0.06);
-                }
-                else{
-                  const lerp = easeInOutLerp(0.0, 0.06, spinTransitionProgressRef.current / spinTransitionDuration);
-                  mesh.rotateY(lerp);
-                }
-              }
-              else if (mesh.name.indexOf('planet') >= 0){
-                if (spinTransitionProgressRef.current == spinTransitionDuration){
-                  mesh.rotateY(0.01);
-                }
-                else{
-                  const lerp = easeInOutLerp(0.0, 0.01, spinTransitionProgressRef.current / spinTransitionDuration);
-                  mesh.rotateY(lerp);
-                }
-              }
-              else if (mesh.name.indexOf('rotor')>= 0){
-                if (spinTransitionProgressRef.current == spinTransitionDuration){
-                  mesh.rotateY(-0.06);
-                }
-                else{
-                  const lerp = easeInOutLerp(0.0, -0.06, spinTransitionProgressRef.current / spinTransitionDuration);
-                  mesh.rotateY(lerp);
-                }
-              }
-              
-            }
-            else{
-              if (mesh.name.indexOf('sun') >= 0){
-                if (spinTransitionProgressRef.current != spinTransitionDuration){
-                  const lerp = easeInOutLerp(0.06, 0.00, spinTransitionProgressRef.current / spinTransitionDuration);
-                  mesh.rotateY(lerp);
-                }
-              }
-              else if (mesh.name.indexOf('planet') >= 0){
-                if (spinTransitionProgressRef.current != spinTransitionDuration){
-  
-                  const lerp = easeInOutLerp(0.01, 0.00, spinTransitionProgressRef.current / spinTransitionDuration);
-                  mesh.rotateY(lerp);
-                }
-              }
-              else if (mesh.name.indexOf('rotor')>= 0){
-                if (spinTransitionProgressRef.current == spinTransitionDuration){
-  
-                  const lerp = easeInOutLerp(-0.06, 0.00, spinTransitionProgressRef.current / spinTransitionDuration);
-                  mesh.rotateY(lerp);
-                }
-              }
-            }
-            
-          }
+          var depends: HandleAnimationDependencies = {
+            groupRef: groupRef, 
+            selectedRef: selectedRef,
+            reverseRef: reverseRef,
+            expandedRef: expandedRef,
+            transitionDuration: transitionDuration,
+            transitionProgressRef: transitionProgressRef,
+            mobileRef: mobileRef,
+            spinRef: spinRef,
+            spinTransitionProgressRef: spinTransitionProgressRef,
+            spinTransitionDuration: spinTransitionDuration,
+            dataRef: dataRef,
+      };
+        handleAnimation(depends);
         }
         if (expandedRef.current && !selectedRef.current && transitionProgressRef.current == transitionDuration && !downRef.current && !learnMoreRef.current)
         {
@@ -675,17 +499,11 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
             setIntersect(null);
           }
         }
-
-
       }
-      
       prev = time;
-     
-
       	// required if controls.enableDamping or controls.autoRotate are set to true
 	    //controls.update();
       renderer.render(scene, camera);
-      
     };
 
     animationFrameIdRef.current = requestAnimationFrame(animate);
@@ -695,19 +513,14 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
       if (animationFrameIdRef.current !== null) {
         cancelAnimationFrame(animationFrameIdRef.current);
       }
+      window.removeEventListener('scroll', handleScroll);
         window.removeEventListener('mousedown', onMouseDown);
         window.removeEventListener('mouseup', onMouseUp);
         window.removeEventListener('mousemove', onMouseMove);
-
-        
       mountRef.current?.removeChild(renderer.domElement);
       window.removeEventListener('click', handleFocus);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('resize', onWindowResize);
-
-
-
-
     };
   }, []);
 
@@ -717,8 +530,20 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
       setVersion(0);
       setExpanded(false);
       expandedRef.current = false;
-      removeModel();
-      loadModel(0);
+      removeModel(groupRef, sceneRef);
+      var loadmodeldepend: LoadModelDependencies = {
+        setLoading: setLoading,
+        modelPath: modelPath,
+        debug: debug,
+        sceneRef: sceneRef,
+        guiRef: guiRef,
+        groupRef: groupRef, 
+        setBasic: setBasic,
+        dataRef: dataRef,
+        originalRotation: originalRotation,
+        slightlyRotating: slightlyRotating
+      }
+      loadModel(0, loadmodeldepend);
       selectedRef.current = null;
       setUnMount(true);
       modelPathRef.current = modelPath;
@@ -775,7 +600,6 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
           const yAxis = groupRef.current.worldToLocal(new THREE.Vector3(0, 1, 0)).clone();
           selectedRef.current.rotateOnWorldAxis(yAxis, deltaX/100);
           selectedRef.current.rotateOnWorldAxis(zAxis, -deltaY/100);
-
         }
         else{
           const zAxis = new THREE.Vector3(0, 0, 1);
@@ -870,14 +694,24 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
   },[unMount])
 
   useEffect(() => {
-    console.log('heyasda' , version);
     if (versionRef.current != version){
-      console.log('trigger me');
       versionRef.current = version;
-      removeModel();
+      removeModel(groupRef, sceneRef);
       setExpanded(false);
       expandedRef.current = false;
-      loadModel(version);
+      var loadmodeldepend: LoadModelDependencies = {
+        setLoading: setLoading,
+        modelPath: modelPath,
+        debug: debug,
+        sceneRef: sceneRef,
+        guiRef: guiRef,
+        groupRef: groupRef, 
+        setBasic: setBasic,
+        dataRef: dataRef,
+        originalRotation: originalRotation,
+        slightlyRotating: slightlyRotating
+      }
+      loadModel(version, loadmodeldepend);
       selectedRef.current = null;
       setUnMount(true);
     }
@@ -952,7 +786,43 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
 
 
   return<>
-    <div ref={mountRef} style={{touchAction: "none"}}></div>
+     <div
+        ref={mountRef}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          touchAction: 'none',
+          zIndex: -1, // Ensure it's behind other elements
+        }}
+      ></div>
+    {storyState ? (
+      <div
+        ref={scrollRef}
+        className="fixed top-0 left-0 w-full h-full overflow-y-scroll snap-y snap-mandatory scroll-smooth z-10 hide-scrollbar"
+        onScroll={(event) => {
+          console.log((event.target as any).scrollTop);
+          // scrollRef.current = event.target.scrollTop;
+        }}
+      >
+        {
+        dataRef.current?.camera_positions ? dataRef.current?.camera_positions.map((item:any, index: number) => (
+          <section
+            key={index} // Ensure each section has a unique key
+            style={{ height: `${scrollMulti * 100}vh` }}
+            className="snap-start flex items-center justify-center"
+          >
+            {/* Content for each section */}
+            <h1 className="text-white text-4xl">Section {index + 1}</h1>
+          </section>
+        )): null
+      }
+        
+      </div>
+) : null}
+
     <div style={{touchAction: "none"}} className="fixed z-30 text-3xl flex flex-wrap place-items-center bottom-[20%] left-1/2 transform -translate-x-1/2 gap-4 text-white">
       {
         selected != null || learnMore ?
@@ -963,58 +833,17 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
         :
         <div></div>
       }
-     {/* { selected != null || learnMore ? 
-     (
-      <>
-        <button className={`w-[14rem] h-[4rem] bg-[green] rounded-full ${mobileRef.current ? 'absolute left-1/2 transform -translate-x-1/2 bottom-[-10vh]' : ''}`}
-        onClick={handleBack}>
-          back
-        </button>
-      </>
-     )
-     :
-     <>
-     {modelPath[0].indexOf('actuator') >= 0 ? 
-      (
-        <>
-        <button className = "w-[14rem] h-[4rem] bg-[green] rounded-full"onClick={() => {
-          if (selectedRef.current ==null)
-          {setExpanded(!expanded)}}}
-          >{expanded ? 'collapse' : 'expand'}</button>
-          <button className = "w-[14rem] h-[4rem] bg-[green] rounded-full"onClick={() => {
-            if (selectedRef.current == null)
-              {
-                setSpin(!spin)
-              }
-          }
-            }>{spin ? 'stop' : 'run'}</button>
-            
-        </>
-        
-      ) : (
-        <div></div>
-      )}
-      <button className = "w-[14rem] h-[4rem] bg-[green] rounded-full"onClick={() => {
-        if (!learnMoreRef.current)
-          {
-            setLearnMore(true);
-          }
-      }
-        }>learn more
-        </button>
-      </>
-      } */}
-    
     </div>
 
-    {selected == null && !mobileRef.current && <BasicFacts
+    {/* {selected == null && !mobileRef.current && <BasicFacts
     data = {basic}
-    />}
-    <div className = "absolute top-0 left-0 w-full h-[20%] flex flex-col items-center justify-center">
+    />} */}
+    <div className = "fixed top-0 left-0 w-full h-[20%] flex flex-col items-center justify-center">
         <div className="text-titlexl lg:text-title_large">{modelPath[0].split('/')[2]}</div>
        {
-        <div className="relative flex items-center gap-3 justify-center">
-          <div className="w-[60px] h-[60px] flex items-center justify-center">
+        <div className={`relative flex items-center gap-3 justify-center duration-1000 ${
+        storyState ? 'opacity-0 pointer-events-none':'opacity-100'}`}>
+          <div className={`w-[60px] h-[60px] flex items-center justify-center`}>
             {selected == null && (passiveRotation ?
             <Image onClick = {handleIconClick} src={"/icons/stationary.svg"} alt={"stop rotating"} 
             width={40}
@@ -1028,7 +857,9 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
             }
           </div>
           {
-            modelPath[0].indexOf('actuator') >= 0 ? 
+            // modelPath[0].indexOf('actuator') >= 0 ? 
+            dataRef.current?.expand !== undefined && dataRef.current.expand ?
+            <>
             <div className="w-[60px] h-[60px] flex items-center justify-center">
           {
             selected == null && (expanded ?
@@ -1049,6 +880,10 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
             className="cursor-pointer"/>)
           }
           </div>
+          <div className="w-[60px] h-[60px] flex items-center justify-center">
+            {spin ? <div className="cursor-pointer" onClick = {()=>{setSpin(false)}}> Stop Rotate</div> : <div className="cursor-pointer" onClick = {()=>{setSpin(true)}}> Rotate</div>}
+            </div>
+          </>
           :
           null
 
@@ -1058,6 +893,10 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
         
     </div>
     {/* {learnMore && coordsRef.current && <Test coords = {coordsRef.current}/>} */}
+    {dataRef.current?.camera_positions ? storyState ? 
+    <div className = "absolute text-titlexl lg:text-title_large bottom-5 right-5 cursor-pointer z-40" onClick = {() => {setStoryState(false); storyRef.current = false;}}>Exit</div> :
+    <div className = "absolute text-titlexl lg:text-title_large bottom-5 right-5 cursor-pointer" onClick = {() => {setStoryState(true); storyRef.current = true;}}>Discover</div> : null
+    }
     {
       <div
         ref = {labelRef}
@@ -1065,7 +904,7 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
         >{intersect}</div>}
     {selected != null && <Info title={selected.name} mobileRef={mobileRef} unMount= {unMount}/>}
     {/* <Info title={'test'} mobileRef={mobileRef}/> */}
-    {selected == null && <Version value={modelPath.length} sharedState={version} setSharedState={setVersion} sharedRef={versionRef}/>}
+    {selected == null && !storyState && <Version value={modelPath.length} sharedState={version} setSharedState={setVersion} sharedRef={versionRef}/>}
     {isLoading && <Loading/>}
   </>;
 };

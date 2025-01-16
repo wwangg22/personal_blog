@@ -12,6 +12,7 @@ interface versionProps {
   }
 
 const Menu: React.FC<versionProps> = ({models, modelPath, setModelPath, debug, mobileRef}) => {
+    console.log(models);
     const [thumbnails, setThumbnails] = useState<string[]>([]);
     const handleClick = (event: React.MouseEvent) => {
         event.preventDefault();
@@ -73,6 +74,7 @@ const Menu: React.FC<versionProps> = ({models, modelPath, setModelPath, debug, m
     useEffect(() => {
         window.addEventListener('click', autoClose);
         getThumbnails().then((response) => {
+            console.log(response?.data.filenames);
             setThumbnails(response?.data.filenames);
         });
         return () =>{
@@ -115,36 +117,48 @@ const Menu: React.FC<versionProps> = ({models, modelPath, setModelPath, debug, m
             <div className="h-[10px] w-full bg-white">
             </div>
             <div className="grid grid-cols-2 gap-4 p-4 text-white">
-                {models ? Array.from({ length: models.length }).map((_, i) => (
-                    <div
+            {models && models.length > 0 ? models.map((model, i) => {
+                const modelName = model.split("/").filter(Boolean).slice(-1)[0];
+                const thumbnail = thumbnails.find(t => t.includes(`${modelName.toLowerCase()}.png`));
+                
+                return (
+                <div
                     key={i}
                     className={`w-menuitem rounded-xl mx-auto cursor-pointer flex flex-col items-stretch p-[5px] hover:bg-[green]`}
-                    onClick = {async ()=>{ 
-                        const folders = await getVersions(models[i]);
-                        if (folders[0] != modelPath[0]){
-                            console.log('setting new one');
-                            setModelPath(folders);
+                    onClick={async () => { 
+                    const menu = document.getElementById("menu");
+                    if (menu){
+                        menu.style.transform = 'translateX(-110%)';
+                        setTimeout(() => {
+                        if (menu.style.transform === 'translateX(-110%)'){
+                            menu.style.display = 'none';
                         }
-                        const menu = document.getElementById("menu");
-                        if (menu){
-                            menu.style.transform = 'translateX(-110%)';
-                            setTimeout(() => {
-                                if (menu.style.transform == 'translateX(-110%)'){
-                                    menu.style.display = 'none';
-                                }
-                            }, 1000);
-                        }
+                        }, 1000);
+                    }
+                    
+                    const folders = await getVersions(model);
+                    if (folders[0] !== modelPath[0]){
+                        console.log('setting new one');
+                        setModelPath(folders);
+                    }
                     
                     }}
-                    >
-                        {!debug && <img src = {thumbnails[i]}/>}
-                        <div className="text-center">{models[i].split("/")[models[i].split("/").length - 2]}</div>
+                >
+                    {!debug && thumbnail && (
+                    <img 
+                        src={thumbnail} 
+                        alt={`Thumbnail for ${modelName}`} 
+                        className="w-full h-auto object-cover rounded-xl"
+                    />
+                    )}
+                    <div className="text-center">
+                    {modelName}
                     </div>
-                ))
-                :
-                <div></div>
-            }
-            </div>
+                    </div>
+                    );
+                }) : <div></div>}
+                </div>
+
             </div>
         </div>
       </>
