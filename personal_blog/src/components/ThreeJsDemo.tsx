@@ -77,6 +77,8 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
   const [passiveRotation, setPassiveRotation] = useState(true);
   const [unMount, setUnMount] = useState(true);
   const iconRef = useRef<HTMLImageElement>(null);
+  // const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
+
 
   const originalRotation = useRef(new THREE.Quaternion());
   const slightlyRotating = useRef(new THREE.Quaternion());
@@ -350,8 +352,16 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
         const scrollElement = scrollRef.current;
         if (scrollElement) {
           const scrollTop = scrollElement.scrollTop;
+          // var viewportHeight = 0;
           const viewportHeight = window.innerHeight * scrollMulti;
+          // if (mobileRef.current){
+          //   viewportHeight = window.outerHeight * scrollMulti;
+          // }
+          // else{
+          //   viewportHeight = window.innerHeight * scrollMulti;
+          // }
           const scrollHeight = scrollElement.scrollHeight - scrollElement.clientHeight;
+          // const viewportHeight = scrollElement.scrollHeight / numTransitions;
 
           // Calculate how many full 100vh segments fit into the current scrollHeight
           const availableTransitions = numTransitions
@@ -807,18 +817,78 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
           // scrollRef.current = event.target.scrollTop;
         }}
       >
-        {
-        dataRef.current?.camera_positions ? dataRef.current?.camera_positions.map((item:any, index: number) => (
-          <section
-            key={index} // Ensure each section has a unique key
-            style={{ height: `${scrollMulti * 100}vh` }}
-            className="snap-start flex items-center justify-center"
-          >
-            {/* Content for each section */}
-            <h1 className="text-white text-4xl">Section {index + 1}</h1>
-          </section>
-        )): null
+        {dataRef.current?.camera_positions.map((item: any, index: number) => {
+        const pageInfo = item.page_info;
+        if (!pageInfo) {
+          return <section  key={index}
+                    style={{ height: `${scrollMulti * 100}vh` }}
+                    className="snap-start"
+              ></section>;
       }
+
+        return (
+          <section
+            key={index}
+            style={{ height: mobileRef.current ?  window.innerHeight : '100vh' }}
+            className="snap-start relative"
+          >
+            <div className="relative w-full h-full p-4">
+            <div className={`${pageInfo.container.tailwind}`}>
+              {/* Title */}
+              <h3 className={`${pageInfo.title.tailwind}`}>{pageInfo.title.text}</h3>
+
+              {/* Dynamic content rendering based on paragraph type */}
+              {pageInfo.paragraph.map((paragraphItem: any, idx: number) => {
+                if (paragraphItem.type === 'p') {
+                  return (
+                    <p key={idx} className={paragraphItem.tailwind}>
+                      {paragraphItem.text}
+                    </p>
+                  );
+                }
+                if (paragraphItem.type === 'img') {
+                  return (
+                    <img
+                      key={idx}
+                      src={paragraphItem.src}
+                      alt={paragraphItem.alt}
+                      className={paragraphItem.tailwind}
+                    />
+                  );
+                }
+                if (paragraphItem.type === 'video') {
+                  return (
+                    <video
+                      key={idx}
+                      src={paragraphItem.src}
+                      controls={paragraphItem.controls}
+                      className={paragraphItem.tailwind}
+                    />
+                  );
+                }
+                if (paragraphItem.type === 'iframe') {
+                  return (
+                    <div
+                    className="relative w-full"
+                    style={{ paddingBottom: '56.25%' }}>
+                    <iframe
+                      key={idx}
+                      src={paragraphItem.src}
+                      title={paragraphItem.title}
+                      className={paragraphItem.tailwind}
+                      allowFullScreen
+
+                    />
+                    </div>
+                  );
+                }
+                return null;
+              })}
+            </div>
+            </div>
+          </section>
+        );
+      })}
         
       </div>
 ) : null}

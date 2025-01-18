@@ -104,6 +104,7 @@ const Menu: React.FC<versionProps> = ({models, modelPath, setModelPath, debug, m
         style={{ transform: 'translateX(-110%)',
                 display: 'none',
                 touchAction: "none",
+                overflow: "hidden",
          }}
         >
             <div className="w-full h-full">
@@ -119,7 +120,10 @@ const Menu: React.FC<versionProps> = ({models, modelPath, setModelPath, debug, m
             <div className="grid grid-cols-2 gap-4 p-4 text-white">
             {models && models.length > 0 ? models.map((model, i) => {
                 const modelName = model.split("/").filter(Boolean).slice(-1)[0];
+
                 const thumbnail = thumbnails.find(t => t.includes(`${modelName.toLowerCase()}.png`));
+                
+                
                 
                 return (
                 <div
