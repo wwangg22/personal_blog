@@ -122,7 +122,7 @@ const Menu: React.FC<versionProps> = ({models, modelPath, setModelPath, debug, m
                 const modelName = model.split("/").filter(Boolean).slice(-1)[0];
 
                 const thumbnail = thumbnails.find(t => t.includes(`${modelName.toLowerCase()}.png`));
-                
+
                 
                 
                 return (

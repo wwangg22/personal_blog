@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   
   if (local == 'true' && typeof folder == "string"){
     var filenames:string[] = await getFiles(folder);
-    // console.log('filenames fdsf', filenames);
+    console.log('filenames fdsf', filenames);
     return NextResponse.json({ filenames: filenames }, { status: 200})
   }
 

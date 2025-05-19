@@ -88,7 +88,7 @@ export const loadModel = async (version:number, dependencies:LoadModelDependenci
             var jsonURL = data[0];
             // console.log(jsonURL);
             
-            
+            // console.log('jsohn url ', jsonURL);
             const jsonData = await axios.get(jsonURL);
 
             dataRef.current = jsonData.data;
@@ -133,6 +133,7 @@ export const loadModel = async (version:number, dependencies:LoadModelDependenci
         
         // loader.load(modelPath[version].split("public")[1] + '/' + stls[i], (geometry) => {
         //const geometry = await loadSTL(modelPath[version].split("public")[1] + '/' + stls[i]);
+        // console.log('stls urls ', stls_urls[i]);
         const geometry = await loadSTL(stls_urls[i]);
       
 
@@ -208,16 +209,16 @@ export const loadModel = async (version:number, dependencies:LoadModelDependenci
               geometry.applyMatrix4(matrix);
             }
             // guiRef.current?.add(mesh.position, 'y', -200, 200).name(`${stls[i]}_y`).step(1);
-            if (debug == true && urls[i].indexOf('garry') >=0){
+            if (debug == true && stls_urls[i].indexOf('v5') >=0){
 
             //   mesh.material.transparent = false;
               guiRef.current?.add(mesh.position, 'y', -100, 200).name(`${stls[i].split("-")[0]}_y`).step(1);
-              guiRef.current?.add(mesh.position, 'z', -300, 300).name(`${stls[i].split("-")[0]}_z`).step(1);
-              guiRef.current?.add(mesh.position, 'x', -100, 100).name(`${stls[i].split("-")[0]}_x`).step(1);
+              guiRef.current?.add(mesh.position, 'z', -300, 300).name(`${stls[i].split("-")[0]}_z`);
+              guiRef.current?.add(mesh.position, 'x', -100, 100).name(`${stls[i].split("-")[0]}_x`);
 
-              guiRef.current?.add(mesh.rotation, 'y', -Math.PI, Math.PI).name(`${stls[i].split("-")[0]}_ry`).step(0.1);
-              guiRef.current?.add(mesh.rotation, 'z', -Math.PI, Math.PI).name(`${stls[i].split("-")[0]}_rz`).step(0.1);
-              guiRef.current?.add(mesh.rotation, 'x', -Math.PI, Math.PI).name(`${stls[i].split("-")[0]}_rx`).step(0.1);
+              guiRef.current?.add(mesh.rotation, 'y', -Math.PI, Math.PI).name(`${stls[i].split("-")[0]}_ry`);
+              guiRef.current?.add(mesh.rotation, 'z', -Math.PI, Math.PI).name(`${stls[i].split("-")[0]}_rz`);
+              guiRef.current?.add(mesh.rotation, 'x', -Math.PI, Math.PI).name(`${stls[i].split("-")[0]}_rx`);
             }
             // else if (modelPath[i].indexOf('ring_gear') >= 0){
             //   mesh.material.transparent = false;

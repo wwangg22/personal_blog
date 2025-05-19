@@ -135,6 +135,12 @@ function RichTextEditor({ userdata }: UserData) {
           } else if (elem.tagName === 'IMG') {
             contentArray.push((elem as HTMLImageElement).src);
           }
+          else if (elem.className.includes('embed-block')) {
+            const iframe = elem.querySelector('iframe');
+            if (iframe) {
+              contentArray.push('embed:' + iframe.src);
+            }
+          }
         }
       });
       const contentArrayJson = JSON.stringify(contentArray);
@@ -256,6 +262,46 @@ function RichTextEditor({ userdata }: UserData) {
     dic = lines!;
   };
 
+  const addEmbedLink = (event: React.MouseEvent) => {
+    event.preventDefault();
+  
+    // Prompt the user for the URL they wish to embed
+    const userInput = prompt('Enter the URL you want to embed:');
+    if (!userInput) return;
+  
+    // Reference the parent element and the location
+    const parentElement = testing2Ref.current as HTMLElement;
+    const referenceNode = parentElement.children[location] as HTMLElement;
+  
+    // Create a container for the embedded content
+    const embedContainer = document.createElement('div');
+    // Add some Tailwind utility classes to center the content and add margins
+    embedContainer.classList.add('flex', 'justify-center', 'my-4'); 
+    // You can keep a special className like "embed-block" as well if you want
+    embedContainer.classList.add('embed-block');
+  
+    // Create the iframe (or other embed element)
+    const embedIframe = document.createElement('iframe');
+    embedIframe.src = userInput;
+    // Tailwind classes for sizing and removing borders:
+    embedIframe.classList.add('border-0', 'w-[560px]', 'h-[315px]');
+    // Enable fullscreen, etc.
+    embedIframe.allowFullscreen = true;
+  
+    // Append the iframe to our container
+    embedContainer.appendChild(embedIframe);
+  
+    // Also create an empty line (similar to your other insert functions)
+    const emptyLine = document.createElement('div');
+    emptyLine.appendChild(document.createElement('br'));
+  
+    // Insert the new embed block and the empty line
+    insertAfter(embedContainer, referenceNode);
+    insertAfter(emptyLine, embedContainer);
+  };
+  
+  
+
   const flip = () => {
     setIsMenuVisible(!isMenuVisible);
     flip45(iconRef.current);
@@ -314,7 +360,7 @@ function RichTextEditor({ userdata }: UserData) {
             <button title="add video">
               <VideoIcon />
             </button>
-            <button title="insert embedded link">
+            <button onClick={addEmbedLink} title="insert embedded link">
               <LinkIcon />
             </button>
             <button onClick = {addCodeBlock} title="insert code block">

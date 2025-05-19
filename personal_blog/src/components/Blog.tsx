@@ -96,6 +96,12 @@ const Blog: React.FC<{
             contentArray.push((elem as HTMLImageElement).src);
             imageurls.push((elem as HTMLImageElement).src);
           }
+          else if (elem.className.includes('embed-block')) {
+            const iframe = elem.querySelector('iframe');
+            if (iframe) {
+              contentArray.push('embed:' + iframe.src);
+            }
+          }
         }
       });
 
@@ -269,38 +275,60 @@ const Blog: React.FC<{
         <br />
 
         {rawhtml?.text?.map((paragraph, index) => {
-          paragraph = paragraph.replace("&nbsp;", "");
-          if (paragraph.startsWith("https:")) {
-            return (
-              <img
-                src={paragraph}
-                alt={`image-${index}`}
-                className="w-full h-auto my-4"
+        paragraph = paragraph.replace("&nbsp;", "");
+
+        // 1) It's an image if starts with https:
+        if (paragraph.startsWith("https:")) {
+          return (
+            <img
+              key={index}
+              src={paragraph}
+              alt={`image-${index}`}
+              className="w-full h-auto my-4"
+            />
+          );
+        }
+
+        // 2) Embed block if starts with 'embed:'
+        else if (paragraph.startsWith("embed:")) {
+          const embedUrl = paragraph.replace("embed:", "");
+          return (
+            <div key={index} className="embed-block flex justify-center my-4">
+              <iframe
+                src={embedUrl}
+                width="560"
+                height="315"
+                allowFullScreen
+                className="border-0"
               />
-            );
-          } else if (paragraph.startsWith("<br>")) {
-            return <br></br>;
-          } else if (paragraph.startsWith("<b>")) {
-            return <b>{paragraph.split("<b>")[1].split("</b>")}</b>;
-          } else if (paragraph.startsWith("cccc")) {
-            return (
-              <div className="code-block" dangerouslySetInnerHTML={{ __html: paragraph.split("cccc")[1] }}></div>
-            );
-          } else {
-            return (
-              <>
-                <div
-                  key={index}
-                  className="text-vsml leading-9"
-                  style={{ textIndent: "2em" }}
-                >
-                  &#10;{paragraph}
-                </div>
-                <br />
-              </>
-            );
-          }
-        })}
+            </div>
+          );
+        }
+
+        // 3) Code block
+        else if (paragraph.startsWith("cccc")) {
+          return (
+            <div
+              key={index}
+              className="code-block"
+              dangerouslySetInnerHTML={{ __html: paragraph.split("cccc")[1] }}
+            />
+          );
+        }
+
+        // etc...
+        else {
+          return (
+            <div
+              key={index}
+              className="text-vsml leading-9"
+              style={{ textIndent: "2em" }}
+            >
+              {paragraph}
+            </div>
+          );
+        }
+      })}
       </div>
       {verified && !saved && (
         <div

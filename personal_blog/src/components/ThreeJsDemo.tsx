@@ -165,13 +165,13 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
 
     if (debug){
 
-      guiRef.current?.add(camera.position, 'y', -300, 300).name(`camera_y`).step(1);
-      guiRef.current?.add(camera.position, 'z', -300, 300).name(`camera_z`).step(1);
-      guiRef.current?.add(camera.position, 'x', -300, 300).name(`camera_x`).step(1);
+      // guiRef.current?.add(camera.position, 'y', -300, 300).name(`camera_y`).step(1);
+      // guiRef.current?.add(camera.position, 'z', -300, 300).name(`camera_z`).step(1);
+      // guiRef.current?.add(camera.position, 'x', -300, 300).name(`camera_x`).step(1);
 
-      guiRef.current?.add(cameraTarget.current, 'x', -200, 200).name('LookAt X');
-      guiRef.current?.add(cameraTarget.current, 'y', -200,200).name('LookAt Y');
-      guiRef.current?.add(cameraTarget.current, 'z', -200, 200).name('LookAt Z');
+      // guiRef.current?.add(cameraTarget.current, 'x', -200, 200).name('LookAt X');
+      // guiRef.current?.add(cameraTarget.current, 'y', -200,200).name('LookAt Y');
+      // guiRef.current?.add(cameraTarget.current, 'z', -200, 200).name('LookAt Z');
     }
 
     const gradientTexture = new THREE.TextureLoader().load('/3.jpg');
@@ -972,7 +972,7 @@ const ThreeScene:React.FC<threeProps> = ({models, modelPath, setModelPath, debug
         ref = {labelRef}
         className = {`pointer-events-none absolute rounded-lg width-[20%] height-[20%] p-1 bg-[#ffffff70] text-black top-0 left-0 transition-opacity duration-500 ease-in-out ${intersect && selected == null ? 'opacity-100' : 'opacity-0'}`}
         >{intersect}</div>}
-    {selected != null && <Info title={selected.name} mobileRef={mobileRef} unMount= {unMount}/>}
+    {selected != null && <Info title={selected.name} mobileRef={mobileRef} unMount= {unMount} debug={debug}/>}
     {/* <Info title={'test'} mobileRef={mobileRef}/> */}
     {selected == null && !storyState && <Version value={modelPath.length} sharedState={version} setSharedState={setVersion} sharedRef={versionRef}/>}
     {isLoading && <Loading/>}

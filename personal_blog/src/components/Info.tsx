@@ -6,6 +6,7 @@ interface InfoProps {
     title: string;
     mobileRef: RefObject<boolean>;
     unMount: boolean;
+    debug: boolean;
 };
 type Description = {
     title: string;
@@ -13,15 +14,20 @@ type Description = {
     design: string;
 }
 
-const Info: React.FC<InfoProps> = ({title, mobileRef, unMount}) => {
+const Info: React.FC<InfoProps> = ({title, mobileRef, unMount, debug}) => {
     const [description, setDescription] = useState<Description |null>(null);
     const eleRef = useRef<HTMLDivElement>(null);
     useEffect(() =>{
         setTimeout(()=> {
             eleRef.current?.classList.add("opacity-100");
         }, 100);
-        axios.get('/api/getDescription', { params: { name: title.split("/")[title.split("/").length - 1].split(".")[0] + ".json" } }).then((response) => {
-            setDescription(response.data.filenames as Description);
+        axios.get('/api/getDescription', { params: { name: title.split("/")[title.split("/").length - 1].split(".")[0] + ".json", debug: debug} }).then((response) => {
+            if (debug){
+                setDescription(response.data.data as Description);
+            }
+            else{
+                setDescription(response.data.filenames as Description);
+            }
         });
 
     },[]);
