@@ -79,7 +79,7 @@ const Headers: React.FC<{
     return (
         <>
         <Link href="/blog" prefetch={false}>
-            <div id = "title" className="flex cursor-default text-center m-auto text-graytrans text-title fixed top-6 left-1/2 -translate-x-1/2 z-10 duration-1000 z-30">
+            <div id = "title" className="flex cursor-default text-center m-auto text-graytrans dark:text-mellow-500 text-title fixed top-6 left-1/2 -translate-x-1/2 z-10 duration-1000 z-30">
                     <h1>s</h1>
                     <h1>i</h1>
                     <h1>n</h1>
@@ -93,8 +93,9 @@ const Headers: React.FC<{
                     <h1>y</h1>
             </div>
         </Link>
-        <svg id="titleicon" className = "z-20 fixed col-start-1 row-start-1 top-6 left-1/2 -translate-x-1/2 duration-1000" width="57" height="29" viewBox="0 0 57 29" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M57 28.5C57 20.9413 53.9973 13.6922 48.6525 8.34746C43.3078 3.00267 36.0587 5.70664e-07 28.5 0C20.9413 -5.70664e-07 13.6922 3.00267 8.34746 8.34745C3.00267 13.6922 1.14133e-06 20.9413 0 28.5L28.5 28.5H57Z" fill="#DCDCDC"/>
+        <svg id="titleicon" className = "z-20 fixed col-start-1 row-start-1 top-6 left-1/2 -translate-x-1/2 duration-1000 text-gray-300 dark:text-gray-600" width="57" height="29" viewBox="0 0 57 29" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M57 28.5C57 20.9413 53.9973 13.6922 48.6525 8.34746C43.3078 3.00267 36.0587 5.70664e-07 28.5 0C20.9413 -5.70664e-07 13.6922 3.00267 8.34746 8.34745C3.00267 13.6922 1.14133e-06 20.9413 0 28.5L28.5 28.5H57Z" fill="currentColor"
+            />
         </svg>
         <div id="entire" className='bg-[#FFFFFF80] wide:bg-[transparent] rounded-lg pt-6 grid grid-rows-headers fixed w-full duration-1000 z-10'>
             <div className='grid grid-cols-7 h-[75px]'>

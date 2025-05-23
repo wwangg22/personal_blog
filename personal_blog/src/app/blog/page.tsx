@@ -30,7 +30,7 @@ export default async function Blog() {
   var lastEntry=undefined;
 
   return (
-    <main className="font-[ClashDisplay-Regular] bg-white w-full min-h-screen text-black">
+    <main className="font-[ClashDisplay-Regular] dark:bg-black dark:text-white bg-white w-full min-h-screen text-black">
         <Headers />
         <Mainpage  
         lastEntry={lastEntry}

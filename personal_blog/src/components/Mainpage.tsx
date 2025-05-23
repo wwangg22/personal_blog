@@ -53,7 +53,7 @@ const Mainpage: React.FC<MainpageProps> = ({lastEntry: initialLastEntry }) => {
 
   return (
     <>
-      <div className="grid grid-rows-auto w-[90vw] md:w-[75vw] wide:w-1/2 mx-auto gap-3 mt-5 bg-white">
+      <div className="grid grid-rows-auto w-[90vw] md:w-[75vw] wide:w-1/2 mx-auto gap-3 mt-5 bg-white dark:bg-black dark:text-white">
         {blogs?.map((blog) => (
           <Articles
             key={blog.SK}

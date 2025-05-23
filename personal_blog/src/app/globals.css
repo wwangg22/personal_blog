@@ -174,10 +174,7 @@ html, body {
 }
 
 @media (min-width: 900px) {
-  #title.move h1{
 
-    color:black;
-  }
   #titleicon{
     transition: 1s ease-in-out;
   }

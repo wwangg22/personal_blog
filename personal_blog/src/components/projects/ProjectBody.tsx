@@ -12,8 +12,8 @@ const projects = [
   },
   {
     id: "snap-3dar",
-    title: "SNAP‑3DAR Video → 3D Model",
-    img: "https://placehold.co/600x400?text=SNAP‑3DAR",
+    title: "SNAP‑AR3D",
+    img: "https://niudbb12-personal-blog-site-publixbucketf7b62b51-t62xl2tsxvkk.s3.us-east-1.amazonaws.com/Frame+4.png",
     desc: "Pipeline that turns phone videos into textured 3D meshes in minutes.",
   },
   {
