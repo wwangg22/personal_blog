@@ -1,0 +1,37 @@
+'use client';
+import React from "react";
+
+/**
+ * ProjectHeader – a standalone header component for a project page.
+ * Drop it at the top of your page and pair it with a <main> body below.
+ * Tailwind‑only, no extra deps.
+ */
+const ProjectHeader: React.FC = () => (
+  <header className="py-6 bg-white shadow-md">
+    <div className="container mx-auto px-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      {/* project title */}
+      <h1 className="text-3xl font-bold tracking-tight">Amazing Project</h1>
+
+      {/* lightweight nav */}
+      <nav className="flex flex-wrap gap-4 text-sm md:text-base">
+        <a href="#overview" className="hover:underline">
+          Overview
+        </a>
+        <a href="#features" className="hover:underline">
+          Features
+        </a>
+        <a href="#tech" className="hover:underline">
+          Tech Stack
+        </a>
+        <a href="#gallery" className="hover:underline">
+          Gallery
+        </a>
+        <a href="#contact" className="hover:underline">
+          Contact
+        </a>
+      </nav>
+    </div>
+  </header>
+);
+
+export default ProjectHeader;
