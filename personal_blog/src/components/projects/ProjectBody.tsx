@@ -5,9 +5,9 @@ import Link from "next/link";
 // compact project data (title, placeholder image, one‑liner)
 const projects = [
   {
-    id: "diffusion-policy",
-    title: "Diffusion Policy on Tactile Hand",
-    img: "https://placehold.co/600x400?text=Diffusion+Policy",
+    id: "ihm-tactile",
+    title: "in-hand manipulation w/ raw tactile signals",
+    img: "https://niudbb12-personal-blog-site-publixbucketf7b62b51-t62xl2tsxvkk.s3.us-east-1.amazonaws.com/a67e80b2-8a87-4b21-a2f2-57cb8fa86e85.gif",
     desc: "Training a diffusion‑based controller for a tactile robotic hand.",
   },
   {
@@ -17,33 +17,39 @@ const projects = [
     desc: "Pipeline that turns phone videos into textured 3D meshes in minutes.",
   },
   {
+    id: "ooo-processor",
+    title: "Out-of-Order P6 Style Processor",
+    img: "https://niudbb12-personal-blog-site-publixbucketf7b62b51-t62xl2tsxvkk.s3.us-east-1.amazonaws.com/Screenshot+2025-05-23+170223.jpg",
+    desc: "SystemVerilog implementation of a P6 Style out-of-order processor with a unified LSQ",
+  },
+  {
+    id: "mobile-nerf",
+    title: "Mobile NeRF",
+    img: "https://niudbb12-personal-blog-site-publixbucketf7b62b51-t62xl2tsxvkk.s3.us-east-1.amazonaws.com/Screenshot+2025-05-23+165453.jpg",
+    desc: "Mobile NeRF is a fast, high-quality neural radiance field implementation able to render at high fps on end devices.",
+  },
+  {
     id: "clash-ai",
     title: "Clash Royale AI",
-    img: "https://placehold.co/600x400?text=Clash+AI",
+    img: "https://niudbb12-personal-blog-site-publixbucketf7b62b51-t62xl2tsxvkk.s3.us-east-1.amazonaws.com/fce8cff9-de76-44a2-8856-ba7b34c620bc.png",
     desc: "Vision‑based PPO agent that beats the in‑game AI.",
   },
   {
     id: "garry-rl",
     title: "SAC & TD3 on “Garry”",
-    img: "https://placehold.co/600x400?text=Garry+RL",
+    img: "https://niudbb12-personal-blog-site-publixbucketf7b62b51-t62xl2tsxvkk.s3.us-east-1.amazonaws.com/d86c93bf-9dd5-42dc-9e32-3b0369690b5e.gif",
     desc: "Deep‑RL locomotion for a custom 8‑DOF biped robot.",
   },
   {
     id: "personal-site",
     title: "Personal Website",
-    img: "https://placehold.co/600x400?text=Website",
+    img: "https://niudbb12-personal-blog-site-publixbucketf7b62b51-t62xl2tsxvkk.s3.us-east-1.amazonaws.com/Screenshot+2025-05-23+130951.jpg",
     desc: "Next.js blog and 3D garage hosted serverlessly on AWS.",
-  },
-  {
-    id: "driving-sim",
-    title: "Mobile Driving Simulator",
-    img: "https://placehold.co/600x400?text=Driving+Sim",
-    desc: "Rust+WebAssembly physics for a playable browser racing game.",
   },
   {
     id: "diffraction-analysis",
     title: "Diffraction Grating Analysis",
-    img: "https://placehold.co/600x400?text=Optics",
+    img: "https://niudbb12-personal-blog-site-publixbucketf7b62b51-t62xl2tsxvkk.s3.us-east-1.amazonaws.com/1-20_R-2.jpg",
     desc: "Python scripts that quantify grating images for optical research.",
   },
 ] as const;
@@ -57,7 +63,12 @@ const ProjectBody: React.FC = () => (
       <Link
         key={p.id}
         href={`/projects/${p.id}`}
-        className="group bg-white rounded-2xl shadow overflow-hidden hover:shadow-lg transition-shadow"
+        className="
+        group rounded-2xl overflow-hidden transition-shadow
+        shadow-md shadow-gray-300/60 hover:shadow-lg hover:shadow-gray-400/80
+        dark:shadow-white/10 dark:hover:shadow-white/20
+        bg-white dark:bg-black
+      "
       >
         <img
           src={p.img}
@@ -68,7 +79,7 @@ const ProjectBody: React.FC = () => (
           <h2 className="text-lg font-semibold group-hover:underline">
             {p.title}
           </h2>
-          <p className="text-sm text-gray-600">{p.desc}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-200">{p.desc}</p>
         </div>
       </Link>
     ))}

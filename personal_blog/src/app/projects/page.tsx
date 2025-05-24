@@ -8,7 +8,7 @@ import ProjectBody from "@/components/projects/ProjectBody";
  * Super‑light wrapper that keeps global styling in one place.
  */
 const ProjectPage: React.FC = () => (
-  <div className="font-[ClashDisplay-Regular] bg-gray-50 min-h-screen text-gray-800">
+  <div className="font-[ClashDisplay-Regular] bg-gray-50 min-h-screen text-gray-800 dark:bg-black dark:text-white">
     <ProjectHeader />
     <ProjectBody />
   </div>

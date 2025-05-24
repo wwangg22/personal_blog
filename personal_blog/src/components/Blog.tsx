@@ -230,7 +230,7 @@ const Blog: React.FC<{
 
   // console.log("rrawthml", rawhtml);
   return (
-    <main className="font-[ClashDisplay-Regular] bg-white w-full min-h-screen text-black">
+    <main className="font-[ClashDisplay-Regular] bg-white w-full min-h-screen text-black dark:bg-black dark:text-white relative">
       <Headers 
       back={true}
       />
