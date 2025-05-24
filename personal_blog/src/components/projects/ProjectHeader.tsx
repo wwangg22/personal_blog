@@ -14,21 +14,10 @@ const ProjectHeader: React.FC = () => (
 
       {/* lightweight nav */}
       <nav className="flex flex-wrap gap-4 text-sm md:text-base">
-        <a href="#overview" className="hover:underline">
-          Overview
+        <a href="/" className="hover:underline">
+          Main Menu
         </a>
-        <a href="#features" className="hover:underline">
-          Features
-        </a>
-        <a href="#tech" className="hover:underline">
-          Tech Stack
-        </a>
-        <a href="#gallery" className="hover:underline">
-          Gallery
-        </a>
-        <a href="#contact" className="hover:underline">
-          Contact
-        </a>
+        
       </nav>
     </div>
   </header>

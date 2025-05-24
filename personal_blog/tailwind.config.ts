@@ -5,6 +5,7 @@ const config: Config = {
   content: [
     "./src/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  darkMode: "class",
   safelist: [
     "w-screen",
     "w-[full]",
@@ -49,7 +50,7 @@ const config: Config = {
     "outline-none", // Remove default outline
     "transition-all", // Transition for all properties
     "p-4",
-    "text-white",
+    // "text-white",
     "text-info_lg", // Custom class, ensure this exists in your Tailwind config
     "font-bold",
     "py-5",
@@ -111,7 +112,20 @@ const config: Config = {
         'titlexl': '3rem',
       },
       colors:{
-        'graytrans': '#00000030'
+        'graytrans': '#00000030',
+        mellow: {
+          50:  '#FFFDF0',
+          100: '#FEF9DA',
+          200: '#FDF2B3',
+          300: '#FBEA8A',
+          400: '#F9E264',
+          /** main **/
+          500: '#F7C948',   // <-- the “just-right” yellow
+          600: '#DBAF32',
+          700: '#B58E26',
+          800: '#8E6F1C',
+          900: '#59440E',
+        }
       },
       width: {
         'menu': 'max(20%, 250px)',
