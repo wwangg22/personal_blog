@@ -36,7 +36,7 @@
          {/* ------------ Header Image ---------------------------------------- */}
          <section className="mx-auto max-w-4xl px-6">
            <Image
-             src="https://niudbb12-personal-blog-site-publixbucketf7b62b51-t62xl2tsxvkk.s3.us-east-1.amazonaws.com/fce8cff9-de76-44a2-8856-ba7b34c620bc"      /* copy your header to /public/data */
+             src="/data/clash/clashroyale_thumbnail.png"      /* copy your header to /public/data */
              alt="Sample detection overlay"
              width={1200}
              height={675}

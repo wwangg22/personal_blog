@@ -206,7 +206,7 @@ function RichTextEditor({ userdata }: UserData) {
     const emptyLine = document.createElement('div');
 
     emptyLine.appendChild(document.createElement('br'));
-    newElement.className = 'code-block';
+    newElement.className = 'code-block dark:bg-gray-800 dark:text-white';
     newElement.setAttribute('contenteditable', 'false');
     newElement.appendChild(newElement2);
     newElement2.setAttribute('contenteditable', 'true');

@@ -6,8 +6,8 @@ import Link from "next/link";
 const ProjectPage: React.FC = () => {
   /* ───────────── STATIC / DUMMY DATA  ───────────── */
   const images = [
-    "https://niudbb12-personal-blog-site-publixbucketf7b62b51-t62xl2tsxvkk.s3.amazonaws.com/Frame+4.png",
-    "https://niudbb12-personal-blog-site-publixbucketf7b62b51-t62xl2tsxvkk.s3.us-east-1.amazonaws.com/Frame+3.png",
+    "/data/snap/snap.png",
+    "/data/snap/Frame_3.png",
     // "https://your-bucket/third.png",
   ];
 
@@ -116,14 +116,14 @@ const ProjectPage: React.FC = () => {
 
   <figure>
     <Image
-      src="https://niudbb12-personal-blog-site-publixbucketf7b62b51-t62xl2tsxvkk.s3.amazonaws.com/Frame+3.png"
-      alt="Training graph"
+      src={images[1]}
+      alt="Results at different iterations"
       width={1200}
       height={800}
       className="w-full h-auto rounded-2xl shadow object-cover"
     />
     <figcaption className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-      Training loss vs. iterations.
+      Results at different Iterations
     </figcaption>
   </figure>
 
@@ -140,7 +140,7 @@ const ProjectPage: React.FC = () => {
 
   <figure>
     <Image
-      src="https://niudbb12-personal-blog-site-publixbucketf7b62b51-t62xl2tsxvkk.s3.amazonaws.com/Frame+4.png"
+      src={images[0]}
       alt="Standard pipeline"
       width={1200}
       height={800}

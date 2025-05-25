@@ -19,6 +19,42 @@ export default function PaperDemoPage() {
         </h1>
       </section>
 
+      <section className="space-y-4">
+  <h2 className="text-2xl font-semibold">Quick&nbsp;Project&nbsp;Overview</h2>
+
+  {/* three-column row */}
+  <div className="flex flex-col gap-6 md:flex-row md:gap-8">
+    {/* Goal */}
+    <div className="flex-1 p-6 rounded-2xl shadow bg-gray-50 dark:bg-gray-900">
+      <h3 className="text-lg font-semibold mb-2">Goal</h3>
+      <p>
+        Enable a 12-DOF robotic hand to <em>continuously rotate a 40 mm lug-nut</em> in the real world—
+        surviving slips and unexpected pushes—by harnessing its built-in raw tactile sensors.
+      </p>
+    </div>
+
+    {/* Approach */}
+    <div className="flex-1 p-6 rounded-2xl shadow bg-gray-50 dark:bg-gray-900">
+      <h3 className="text-lg font-semibold mb-2">Approach</h3>
+      <p>
+        1) Train a PPO “expert” in Isaac Gym.<br/>
+        2) Collect ≈45 k real trajectories with RGB-D and 28-channel touch.<br/>
+        3) Distill that data into a Transformer (BAKU) policy that ingests raw tactile + vision—no tactile
+        simulation required.
+      </p>
+    </div>
+
+    {/* Result */}
+    <div className="flex-1 p-6 rounded-2xl shadow bg-gray-50 dark:bg-gray-900">
+      <h3 className="text-lg font-semibold mb-2">Result</h3>
+      <p>
+        The multimodal policy lasts <strong>≈ 180 s vs 13 s</strong> for the RL expert on the hardest test,
+        a ~14× gain—demonstrating that raw tactile feedback dramatically improves robustness and self-recovery.
+      </p>
+    </div>
+  </div>
+</section>
+
       {/* ───── video ───── */}
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold">Project&nbsp;Demo&nbsp;Video</h2>

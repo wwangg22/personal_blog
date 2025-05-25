@@ -310,7 +310,7 @@ const Blog: React.FC<{
           return (
             <div
               key={index}
-              className="code-block"
+              className="code-block dark:bg-gray-800 dark:text-white text-vsml"
               dangerouslySetInnerHTML={{ __html: paragraph.split("cccc")[1] }}
             />
           );
@@ -318,14 +318,17 @@ const Blog: React.FC<{
 
         // etc...
         else {
+          if (paragraph === '\n') return <br key={index} />;
+        
           return (
             <div
               key={index}
               className="text-vsml leading-9"
-              style={{ textIndent: "2em" }}
-            >
-              {paragraph}
-            </div>
+              style={{ textIndent: '2em' }}
+              dangerouslySetInnerHTML={{
+                __html: paragraph.replace(/&nbsp;/g, '')   // keep your original cleanup
+              }}
+            />
           );
         }
       })}

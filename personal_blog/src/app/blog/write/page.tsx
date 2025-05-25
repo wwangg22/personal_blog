@@ -33,7 +33,7 @@ const WritePage: React.FC = async () => {
 
     if(valid){
         return (
-            <main className="font-[ClashDisplay-Regular] bg-white w-full min-h-screen text-black">
+            <main className="font-[ClashDisplay-Regular] bg-white w-full min-h-screen text-black dark:text-white dark:bg-black">
                 <Headers />
                 <RichTextEditor
                 email = {email}

@@ -1,7 +1,7 @@
 'use client'
 import React from 'react';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/navigation';
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
 import Link from 'next/link';
@@ -17,6 +17,7 @@ const validateEmail = (email: String) => {
   };
 
 const Login: React.FC = () => {
+    const router = useRouter();
 
     const [user, setUser] = useState({
         email: "",
@@ -40,38 +41,35 @@ const Login: React.FC = () => {
         setErrorMessage(""); // Clear any existing error messages
         e.preventDefault();
         try {
-            const response = await axios.post(`/api/login`, user);
-            if (response.status === 200) {
+            const { status } = await axios.post('/api/login', user);
+      
+            if (status === 200) {
+              
+              router.push('/blog');
+              return; // stop execution, no need to run finally‑block code below
             }
-        } catch (error) {
-        let statuscode;
-        if (typeof error == 'object' && 'response' in error!)
-        {
-
-            const errorWithResponse = error as { response: { status: number } };
-            statuscode = errorWithResponse.response.status;
-        }
-        else{
-            statuscode = 0;
-        }
-        // console.log(statuscode)
-        if (statuscode === 400) {
-            setErrorMessage("Invalid characters");
+          } catch (error: unknown) {
+            const statusCode =
+              typeof error === 'object' && error && 'response' in error
+                ? (error as { response: { status: number } }).response.status
+                : 0;
+      
+            if (statusCode === 400) {
+              setErrorMessage('Invalid characters');
+              setErrorfields('both');
+            } else if (statusCode === 401) {
+              setErrorMessage('Invalid credentials');
+              setErrorfields('both');
+            } else {
+              setErrorMessage('Something went wrong, please try again');
+              setErrorfields('both');
+            }
             setInputError(true);
-            setErrorfields("both");
-        } else if (statuscode === 401) {
-            setErrorMessage("Invalid credentials");
-            setInputError(true);
-            setErrorfields("both");
-        } else {
-            setErrorMessage("Something went wrong, please try again");
-            setInputError(true);
-            setErrorfields("both");
-        }
-        } finally {
-        setLoading(false);
-        }
-    };
+          } finally {
+            setLoading(false);
+          }
+        };
+      
     return (
         <div
         className={"flex flex-col items-center justify-center h-0.75 p-5 w-full"}

@@ -35,7 +35,7 @@
          {/* ------------ Header Image ---------------------------------------- */}
          <section className="mx-auto max-w-4xl px-6">
            <Image
-             src="https://niudbb12-personal-blog-site-publixbucketf7b62b51-t62xl2tsxvkk.s3.us-east-1.amazonaws.com/Screenshot+2025-05-25+002845.jpg"  /* copy your header into /public/data */
+             src="/data/garry/model.jpg"  /* copy your header into /public/data */
              alt="Garry robot model overlay"
              width={1200}
              height={675}
@@ -64,7 +64,7 @@
    
            <div className="flex items-center justify-center">
              <Image
-               src="https://niudbb12-personal-blog-site-publixbucketf7b62b51-t62xl2tsxvkk.s3.us-east-1.amazonaws.com/76824921-6e6b-4363-988f-fde8b8e0448e"   /* optional supplementary image */
+               src="/data/garry/mujoco.gif"   /* optional supplementary image */
                alt="CAD to MuJoCo"
                width={600}
                height={450}
@@ -77,7 +77,7 @@
          <section className="mx-auto max-w-5xl px-6 py-20 grid gap-12 md:grid-cols-2">
            <div className="order-last md:order-first">
              <Image
-               src="https://niudbb12-personal-blog-site-publixbucketf7b62b51-t62xl2tsxvkk.s3.us-east-1.amazonaws.com/5f7320b3-8c6f-4afe-89c5-cac637848b74"   /* e.g. training reward curve */
+               src="/data/garry/walk.gif"   /* e.g. training reward curve */
                alt="TD3 training graph"
                width={600}
                height={450}
@@ -113,7 +113,7 @@
          {/* ------------ Result GIF / image ---------------------------------- */}
          <section className="mx-auto max-w-4xl px-6 pb-24">
            <Image
-             src="https://niudbb12-personal-blog-site-publixbucketf7b62b51-t62xl2tsxvkk.s3.us-east-1.amazonaws.com/d86c93bf-9dd5-42dc-9e32-3b0369690b5e"   /* export your demo as a gif/mp4 poster */
+             src="/data/garry/garry_thumbnail.gif"   /* export your demo as a gif/mp4 poster */
              alt="Semi-successful walk"
              width={800}
              height={450}

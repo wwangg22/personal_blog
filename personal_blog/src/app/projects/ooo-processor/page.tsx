@@ -11,7 +11,7 @@ import ChartImage from '@/components/ChartImage';   // path may vary
 const PDF_PATH = '/data/CSEE_4824_Final_Report.pdf';
 
 // S3 bucket root
-const BUCKET = 'https://niudbb12-personal-blog-site-publixbucketf7b62b51-t62xl2tsxvkk.s3.us-east-1.amazonaws.com';
+const BUCKET = '/data/ooo';
 
 // —— baseline-only charts —————————————————————————
 const baselineCharts = [
