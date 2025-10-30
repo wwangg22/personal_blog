@@ -10,7 +10,7 @@
    ✦ CTA        → full blog + GitHub repo
    --------------------------------------------------------------------- */
 
-   import Image from "next/image";
+  //  import Image from "next/image";
    import Link from "next/link";
    
    export default function GarryRLPage() {
@@ -34,13 +34,12 @@
    
          {/* ------------ Header Image ---------------------------------------- */}
          <section className="mx-auto max-w-4xl px-6">
-           <Image
+           <img
              src="/data/garry/model.jpg"  /* copy your header into /public/data */
              alt="Garry robot model overlay"
              width={1200}
              height={675}
              className="rounded-xl shadow-lg w-full object-cover"
-             priority
            />
          </section>
    
@@ -63,7 +62,7 @@
            </div>
    
            <div className="flex items-center justify-center">
-             <Image
+             <img
                src="/data/garry/mujoco.gif"   /* optional supplementary image */
                alt="CAD to MuJoCo"
                width={600}
@@ -76,7 +75,7 @@
          {/* ------------ RL section ----------------------------------------- */}
          <section className="mx-auto max-w-5xl px-6 py-20 grid gap-12 md:grid-cols-2">
            <div className="order-last md:order-first">
-             <Image
+             <img
                src="/data/garry/walk.gif"   /* e.g. training reward curve */
                alt="TD3 training graph"
                width={600}
@@ -112,7 +111,7 @@
    
          {/* ------------ Result GIF / image ---------------------------------- */}
          <section className="mx-auto max-w-4xl px-6 pb-24">
-           <Image
+           <img
              src="/data/garry/garry_thumbnail.gif"   /* export your demo as a gif/mp4 poster */
              alt="Semi-successful walk"
              width={800}

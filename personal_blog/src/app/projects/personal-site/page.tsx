@@ -1,6 +1,6 @@
 
   'use client';
-  import Image from 'next/image';
+  // import Image from 'next/image';
   import Link from 'next/link';
   
   export default function PersonalWebsitePage() {
@@ -26,13 +26,12 @@
         {/* ------------ Header Image ---------------------------------------- */}
         {/* TODO: replace src with a real screenshot of your homepage */}
         <section className="mx-auto max-w-4xl px-6">
-          <Image
+          <img
             src="/data/personal/landing_page.jpg"
             alt="Personal website homepage screenshot"
             width={1200}
             height={675}
             className="rounded-xl shadow-lg w-full object-cover"
-            priority
           />
         </section>
   

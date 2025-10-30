@@ -1,7 +1,7 @@
 // components/ChartImage.tsx
 'use client';
 import React from 'react';
-import Image from 'next/image';
+// import Image from 'next/image';
 
 type Props = { src: string; alt: string };
 
@@ -23,7 +23,7 @@ export default function ChartImage({ src, alt }: Props) {
         onClick={() => setOpen(true)}
         className="focus:outline-none"
       >
-        <Image
+        <img
           src={src}
           alt={alt}
           width={600}
@@ -38,7 +38,7 @@ export default function ChartImage({ src, alt }: Props) {
           className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center"
           onClick={() => setOpen(false)}
         >
-          <Image
+          <img
             src={src}
             alt={alt}
             width={2400}

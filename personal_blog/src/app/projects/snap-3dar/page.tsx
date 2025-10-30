@@ -1,6 +1,6 @@
 // app/projects/[id]/page.tsx
 import React from "react";
-import Image from "next/image";
+// import Image from "next/image";
 import Link from "next/link";
 
 const ProjectPage: React.FC = () => {
@@ -115,7 +115,7 @@ const ProjectPage: React.FC = () => {
   </p>
 
   <figure>
-    <Image
+    <img
       src={images[1]}
       alt="Results at different iterations"
       width={1200}
@@ -139,7 +139,7 @@ const ProjectPage: React.FC = () => {
   </p>
 
   <figure>
-    <Image
+    <img
       src={images[0]}
       alt="Standard pipeline"
       width={1200}

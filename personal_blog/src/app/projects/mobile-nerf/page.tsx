@@ -4,7 +4,7 @@
 // Each thumbnail links to /projects/mobile-nerf/[id]. Replace the `scenes`
 // array with your real scene metadata or fetch it from an API/JSON file.
 
-import Image from "next/image";
+// import Image from "next/image";
 import Link from "next/link";
 
 interface SceneMeta {
@@ -56,13 +56,12 @@ export default function MobileNerfGalleryPage() {
               href={`/projects/mobile-nerf/${id}`}
               className="group relative block rounded-xl overflow-hidden shadow-lg transition-transform hover:scale-[1.02]"
             >
-              <Image
+              <img
                 src={thumb}
                 alt={title}
                 width={640}
                 height={480}
                 className="w-full h-48 object-cover group-hover:brightness-110 group-hover:contrast-110 transition-colors"
-                priority
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
               <span className="absolute bottom-2 left-3 text-lg font-semibold tracking-wide">

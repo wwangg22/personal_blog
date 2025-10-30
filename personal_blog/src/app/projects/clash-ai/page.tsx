@@ -11,7 +11,7 @@
    ‣ (Optional) GitHub repo link – swap in your real URL if public
    --------------------------------------------------------------------- */
 
-   import Image from "next/image";
+//    import Image from "next/image";
    import Link from "next/link";
    
    export default function ClashRoyaleAIPage() {
@@ -35,13 +35,12 @@
    
          {/* ------------ Header Image ---------------------------------------- */}
          <section className="mx-auto max-w-4xl px-6">
-           <Image
+           <img
              src="/data/clash/clashroyale_thumbnail.png"      /* copy your header to /public/data */
              alt="Sample detection overlay"
              width={1200}
              height={675}
              className="rounded-xl shadow-lg w-full object-cover"
-             priority
            />
          </section>
    
