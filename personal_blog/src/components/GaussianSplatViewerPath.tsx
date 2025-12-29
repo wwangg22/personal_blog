@@ -2,17 +2,19 @@
 
 import React, { useEffect, useRef, useState } from "react";
 
-export interface GaussianSplatViewerProps {
+export interface GaussianSplatViewerPathProps {
   splatUrl: string;
-  camerasUrl: string;
+  camerasUrl: string; // REQUIRED for this version (PATH-driven)
   width?: number;
   height?: number;
   className?: string;
 }
 
-/* ---------------------- math helpers (same as your test.js) ---------------------- */
+/* ------------------------- math helpers (from your JS) ------------------------- */
 
 const wrapPi = (a: number) => ((a + Math.PI) % (2 * Math.PI)) - Math.PI;
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
 const DIAG_FOV_DEG = 70;
 const DIAG_FOV = (DIAG_FOV_DEG * Math.PI) / 180;
 
@@ -85,7 +87,9 @@ function invert4(a: number[]) {
 
 function rotate4(a: number[], rad: number, x: number, y: number, z: number) {
   let len = Math.hypot(x, y, z);
-  x /= len; y /= len; z /= len;
+  x /= len;
+  y /= len;
+  z /= len;
   let s = Math.sin(rad);
   let c = Math.cos(rad);
   let t = 1 - c;
@@ -129,21 +133,14 @@ function safeAsin(x: number) {
   return Math.asin(Math.max(-1, Math.min(1, x)));
 }
 
-function getYawPitchPosFromView(viewMatrix: number[]) {
-  const inv = invert4(viewMatrix);
-  if (!inv) return [0, 0, [0, 0, 0]] as const;
-  const bx = inv[8], by = inv[9], bz = inv[10];
-  const yaw = Math.atan2(bx, bz);
-  const pitch = safeAsin(-by);
-  return [yaw, pitch, [inv[12], inv[13], inv[14]]] as const;
-}
-
 function makeViewMatrix(yaw: number, pitch: number, pos: number[]) {
   const cy = Math.cos(yaw), sy = Math.sin(yaw);
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
+
   const right = [cy, 0, -sy];
   const up = [sy * sp, cp, cy * sp];
   const back = [sy * cp, -sp, cy * cp];
+
   return invert4([
     right[0], right[1], right[2], 0,
     up[0], up[1], up[2], 0,
@@ -152,35 +149,40 @@ function makeViewMatrix(yaw: number, pitch: number, pos: number[]) {
   ]);
 }
 
-// Your test.js camera JSON helper: expects {rotation: [[...],[...],[...]], position:[...]} :contentReference[oaicite:2]{index=2}
-function getViewMatrixFromCameraObject(cam: any): number[] | null {
-  if (cam?.rotation && cam?.position) {
-    const R = cam.rotation.flat();
-    const t = cam.position;
-    const camToWorld = [
-      [R[0], R[1], R[2], 0],
-      [R[3], R[4], R[5], 0],
-      [R[6], R[7], R[8], 0],
-      [
-        -t[0] * R[0] - t[1] * R[3] - t[2] * R[6],
-        -t[0] * R[1] - t[1] * R[4] - t[2] * R[7],
-        -t[0] * R[2] - t[1] * R[5] - t[2] * R[8],
-        1,
-      ],
-    ].flat();
-    return camToWorld;
-  }
-
-  // Common NeRF-style: { transform_matrix: [[...4],[...],[...],[...]] } = camera-to-world
-  if (cam?.transform_matrix) {
-    const m = Array.isArray(cam.transform_matrix) ? cam.transform_matrix.flat() : cam.transform_matrix;
-    if (Array.isArray(m) && m.length === 16) return invert4(m); // view = inverse(c2w)
-  }
-
-  return null;
+function yawPitchFromRot3(R: number[][]) {
+  const bx = R[0][2];
+  const by = R[1][2];
+  const bz = R[2][2];
+  return [Math.atan2(bx, bz), safeAsin(-by)] as const;
 }
 
-/* ---------------------- worker (same as your test.js) ---------------------- */
+type PathKeyframe = { pos: number[]; yaw: number; pitch: number };
+
+function samplePath(path: PathKeyframe[], t: number) {
+  const n = path.length - 1;
+  if (n <= 0) return path[0];
+
+  const s = Math.min(t * n, n - 1e-6);
+  const i = Math.floor(s);
+  const u = s - i;
+
+  const a = path[i];
+  const b = path[i + 1];
+
+  const pos = [
+    a.pos[0] + (b.pos[0] - a.pos[0]) * u,
+    a.pos[1] + (b.pos[1] - a.pos[1]) * u,
+    a.pos[2] + (b.pos[2] - a.pos[2]) * u,
+  ];
+
+  const dyaw = wrapPi(b.yaw - a.yaw);
+  const yaw = wrapPi(a.yaw + dyaw * u);
+  const pitch = a.pitch + (b.pitch - a.pitch) * u;
+
+  return { pos, yaw, pitch };
+}
+
+/* ------------------------- worker (same as your JS core) ------------------------- */
 function createWorker(self: DedicatedWorkerGlobalScope) {
   let buffer: ArrayBuffer | undefined;
   let vertexCount = 0;
@@ -197,6 +199,7 @@ function createWorker(self: DedicatedWorkerGlobalScope) {
   function floatToHalf(float: number) {
     _floatView[0] = float;
     const f = _int32View[0];
+
     const sign = (f >> 31) & 0x0001;
     const exp = (f >> 23) & 0x00ff;
     let frac = f & 0x007fffff;
@@ -246,7 +249,11 @@ function createWorker(self: DedicatedWorkerGlobalScope) {
       texdata_c[4 * (8 * i + 7) + 2] = u_buffer[32 * i + 24 + 2];
       texdata_c[4 * (8 * i + 7) + 3] = u_buffer[32 * i + 24 + 3];
 
-      const scale = [f_buffer[8 * i + 3 + 0], f_buffer[8 * i + 3 + 1], f_buffer[8 * i + 3 + 2]];
+      const scale = [
+        f_buffer[8 * i + 3 + 0],
+        f_buffer[8 * i + 3 + 1],
+        f_buffer[8 * i + 3 + 2],
+      ];
       const rot = [
         (u_buffer[32 * i + 28 + 0] - 128) / 128,
         (u_buffer[32 * i + 28 + 1] - 128) / 128,
@@ -350,7 +357,7 @@ function createWorker(self: DedicatedWorkerGlobalScope) {
   };
 }
 
-/* ---------------------- shaders (same as your test.js) ---------------------- */
+/* ------------------------- shaders (same as your JS) ------------------------- */
 
 const vertexShaderSource = `#version 300 es
 precision highp float;
@@ -429,7 +436,7 @@ void main () {
 
 /* ------------------------------ component ------------------------------ */
 
-const GaussianSplatViewer: React.FC<GaussianSplatViewerProps> = ({
+const GaussianSplatViewerPath: React.FC<GaussianSplatViewerPathProps> = ({
   splatUrl,
   camerasUrl,
   width = 960,
@@ -441,11 +448,8 @@ const GaussianSplatViewer: React.FC<GaussianSplatViewerProps> = ({
   const sliderRef = useRef<HTMLInputElement | null>(null);
 
   const [fps, setFps] = useState(0);
-  const [status, setStatus] = useState<{ text: string; verts: number; bytes: number }>({
-    text: "Starting…",
-    verts: 0,
-    bytes: 0,
-  });
+  const [loadingText, setLoadingText] = useState("Loading cameras…");
+  const [loadedVerts, setLoadedVerts] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -454,58 +458,55 @@ const GaussianSplatViewer: React.FC<GaussianSplatViewerProps> = ({
     const slider = sliderRef.current;
     if (!wrap || !canvas || !slider) return;
 
-    const onWheel = (e: WheelEvent) => {
-    // If the wheel happens over the slider, let the slider/page handle it
-    if (e.target === slider || (e.target instanceof Node && slider.contains(e.target))) return;
-
-    const dir = Math.sign(e.deltaY);
-    const step = 0.05;
-
-    targetT = Math.max(0, Math.min(1, targetT + dir * step));
-    slider.value = String(targetT * 100);
-  };
-
-  wrap.addEventListener("wheel", onWheel, { passive: true });
-
     let cancelled = false;
     const abort = new AbortController();
+
     setError(null);
+    setFps(0);
+    setLoadedVerts(0);
+    setLoadingText("Loading cameras…");
 
-    // Defaults from your test.js (but we’ll override with camerasUrl if present)
-    let START_POS = [0.5828, -0.0901, 1.6495];
-    let END_POS = [1.3242, -0.3213, 4.0102];
-    let yaw = 0.35;
-    let pitch = 0.0006108470632345802;
+    // PATH (key difference)
+    let PATH: PathKeyframe[] = [];
 
-    const ROTATE_SPEED = 1.7;
+    // viewport dims (we treat these like your innerWidth/innerHeight in JS)
+    let viewW = 1;
+    let viewH = 1;
+
+    // camera controls (same feel as your JS)
     const LERP_RATE = 8;
+    const ROTATE_SPEED = 1.7;
+
+    const YAW_RANGE = Math.PI / 2;
+    const PITCH_RANGE = Math.PI / 2;
+
+    let yawFrac = 0.5;
+    let pitchFrac = 0.5;
 
     let targetT = 0;
-    let targetYaw = yaw;
-    let targetPitch = pitch;
     let currentT = 0;
-    let currentYaw = yaw;
-    let currentPitch = pitch;
 
     let dragging = false;
-    let px = 0, py = 0;
+    let px = 0;
+    let py = 0;
 
-    const MIN_PITCH = -Math.PI / 4 + 0.01;
-    const MAX_PITCH = Math.PI / 4 - 0.01;
-    const MIN_YAW = 0.35 - Math.PI / 2;
-    const MAX_YAW = 0.35 + Math.PI / 2;
+    // focal lengths (computed from min(viewW, viewH) like your updateFocalLengths())
+    let fx = 1, fy = 1;
+    function updateFocalLengths() {
+      const minDim = Math.min(viewW, viewH); // same logic as your JS (min(innerWidth, innerHeight))
+      const f = 0.5 * minDim / Math.tan(DIAG_FOV / 2);
+      fx = f;
+      fy = f;
+    }
 
-    const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
-    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-
-    // Setup GL
+    // --- WebGL init ---
     const gl = canvas.getContext("webgl2", { antialias: false }) as WebGL2RenderingContext | null;
     if (!gl) {
       setError("WebGL2 not available.");
       return;
     }
 
-    // Compile program
+    // compile/link
     function compile(type: number, src: string) {
       const sh = gl.createShader(type)!;
       gl.shaderSource(sh, src);
@@ -545,20 +546,21 @@ const GaussianSplatViewer: React.FC<GaussianSplatViewerProps> = ({
     const u_focal = gl.getUniformLocation(program, "focal");
     const u_view = gl.getUniformLocation(program, "view");
 
-    // Quad geometry
-    const triangleVertices = new Float32Array([-2, -2, 2, -2, 2, 2, -2, 2]);
+    // quad geometry
+    const quad = new Float32Array([-2, -2, 2, -2, 2, 2, -2, 2]);
     const vertexBuffer = gl.createBuffer()!;
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, triangleVertices, gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, quad, gl.STATIC_DRAW);
     const a_position = gl.getAttribLocation(program, "position");
     gl.enableVertexAttribArray(a_position);
     gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0);
 
-    // Texture + index buffer
+    // texture
     const texture = gl.createTexture()!;
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.uniform1i(gl.getUniformLocation(program, "u_texture"), 0);
 
+    // index buffer (instanced)
     const indexBuffer = gl.createBuffer()!;
     const a_index = gl.getAttribLocation(program, "index");
     gl.enableVertexAttribArray(a_index);
@@ -566,38 +568,31 @@ const GaussianSplatViewer: React.FC<GaussianSplatViewerProps> = ({
     gl.vertexAttribIPointer(a_index, 1, gl.INT, false, 0, 0);
     gl.vertexAttribDivisor(a_index, 1);
 
-    // Worker
+    // worker
     const workerBlob = new Blob([`(${createWorker.toString()})(self)`], { type: "application/javascript" });
     const workerUrl = URL.createObjectURL(workerBlob);
     const worker = new Worker(workerUrl);
     URL.revokeObjectURL(workerUrl);
 
-    // Resize / projection like test.js :contentReference[oaicite:3]{index=3}
-    let fx = 1, fy = 1;
+    // resize + projection (uses viewW/viewH)
     let projectionMatrix: number[] = [];
     let downsample = 1;
 
-    function updateFocalLengthsForSize(w: number, h: number) {
-      const minDim = Math.min(w, h);
-      const f = 0.5 * minDim / Math.tan(DIAG_FOV / 2);
-      fx = f; fy = f;
-    }
-
-    const getSize = () => {
-      const r = wrap.getBoundingClientRect();
-      return { w: Math.max(1, Math.floor(r.width)), h: Math.max(1, Math.floor(r.height)) };
-    };
-
     const resize = () => {
-      const { w, h } = getSize();
-      updateFocalLengthsForSize(w, h);
-      gl.uniform2fv(u_focal, new Float32Array([fx, fy]));
-      projectionMatrix = getProjectionMatrix(fx, fy, w, h);
-      gl.uniform2fv(u_viewport, new Float32Array([w, h]));
+      const r = wrap.getBoundingClientRect();
+      viewW = Math.max(1, Math.floor(r.width));
+      viewH = Math.max(1, Math.floor(r.height));
 
-      gl.canvas.width = Math.round(w / downsample);
-      gl.canvas.height = Math.round(h / downsample);
+      updateFocalLengths();
+      gl.uniform2fv(u_focal, new Float32Array([fx, fy]));
+
+      projectionMatrix = getProjectionMatrix(fx, fy, viewW, viewH);
+      gl.uniform2fv(u_viewport, new Float32Array([viewW, viewH]));
+
+      gl.canvas.width = Math.round(viewW / downsample);
+      gl.canvas.height = Math.round(viewH / downsample);
       gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
       gl.uniformMatrix4fv(u_projection, false, projectionMatrix);
     };
 
@@ -605,55 +600,28 @@ const GaussianSplatViewer: React.FC<GaussianSplatViewerProps> = ({
     ro.observe(wrap);
     resize();
 
-    // // Load camerasUrl and aim the camera path at the scene
-    // (async () => {
-    //   try {
-    //     const r = await fetch(camerasUrl, { signal: abort.signal, credentials: "omit" });
-    //     if (!r.ok) throw new Error(`${r.status} loading camerasUrl`);
-    //     const json = await r.json();
-
-    //     // Accept either [] or {cameras:[]} or {frames:[]}
-    //     const cams =
-    //       Array.isArray(json) ? json :
-    //       Array.isArray(json?.cameras) ? json.cameras :
-    //       Array.isArray(json?.frames) ? json.frames :
-    //       null;
-
-    //     if (!cams || cams.length === 0) return;
-
-    //     const v0 = getViewMatrixFromCameraObject(cams[0]);
-    //     const v1 = getViewMatrixFromCameraObject(cams[cams.length - 1]);
-    //     if (v0) {
-    //       const [y, p, pos] = getYawPitchPosFromView(v0);
-    //       yaw = y; pitch = p;
-    //       targetYaw = currentYaw = yaw;
-    //       targetPitch = currentPitch = pitch;
-    //       START_POS = [...pos];
-    //     }
-    //     if (v1) {
-    //       const [, , pos] = getYawPitchPosFromView(v1);
-    //       END_POS = [...pos];
-    //     }
-
-    //     // keep slider at start
-    //     targetT = currentT = 0;
-    //     slider.value = "0";
-    //   } catch (e: any) {
-    //     // Cameras are optional to render; if it fails, we still try splat
-    //     console.warn("camerasUrl load failed:", e?.message || e);
-    //   }
-    // })();
-
-    // Slider
-    const updateTick = () => {
+    // slider (t in 0..1)
+    const onSlider = () => {
       targetT = (Number(slider.value) || 0) / 100;
     };
-    slider.addEventListener("input", updateTick);
-    updateTick();
+    slider.addEventListener("input", onSlider);
+    onSlider();
 
-    // Pointer rotate
+    // wheel (same as your JS: step=0.01; update slider.value)
+    const onWheel = (e: WheelEvent) => {
+      // don't fight the slider
+      if (e.target === slider || (e.target instanceof Node && slider.contains(e.target))) return;
+      const dir = Math.sign(e.deltaY);
+      const step = 0.05;
+      targetT = clamp(targetT + dir * step, 0, 1);
+      slider.value = String(targetT * 100);
+    };
+    wrap.addEventListener("wheel", onWheel, { passive: true });
+
+    // pointer drag -> yawFrac/pitchFrac (key part of your JS)
     canvas.style.touchAction = "none";
-    canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+    const onContextMenu = (e: MouseEvent) => e.preventDefault();
+    canvas.addEventListener("contextmenu", onContextMenu);
 
     const onPointerDown = (ev: PointerEvent) => {
       canvas.setPointerCapture(ev.pointerId);
@@ -666,43 +634,138 @@ const GaussianSplatViewer: React.FC<GaussianSplatViewerProps> = ({
     const onPointerMove = (ev: PointerEvent) => {
       if (!dragging) return;
       if ((ev.buttons & 1) || (ev.pointerType === "touch" && ev.isPrimary)) {
-        const { w, h } = getSize();
-        const dx = ROTATE_SPEED * (ev.clientX - px) / w;
-        const dy = ROTATE_SPEED * (ev.clientY - py) / h;
-        targetYaw = clamp(targetYaw + dx, MIN_YAW, MAX_YAW);
-        targetPitch = clamp(targetPitch - dy, MIN_PITCH, MAX_PITCH);
+        const dx = (ev.clientX - px) / viewW;
+        const dy = (ev.clientY - py) / viewH;
+
+        yawFrac = clamp(yawFrac + dx * ROTATE_SPEED, 0, 1);
+        pitchFrac = clamp(pitchFrac - dy * ROTATE_SPEED, 0, 1);
+
         px = ev.clientX;
         py = ev.clientY;
       }
     };
-    const onPointerUp = (ev: PointerEvent) => { if (ev.isPrimary) dragging = false; };
+    const onPointerUp = (ev: PointerEvent) => {
+      if (ev.isPrimary) dragging = false;
+    };
+
     canvas.addEventListener("pointerdown", onPointerDown);
     canvas.addEventListener("pointermove", onPointerMove);
     canvas.addEventListener("pointerup", onPointerUp);
     canvas.addEventListener("pointercancel", onPointerUp);
 
-    // Worker -> upload texture & indices
+    // worker -> upload texture + indices
     let vertexCount = 0;
+
     worker.onmessage = (e: MessageEvent) => {
       const data: any = e.data;
+
       if (data.texdata) {
         gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32UI, data.texwidth, data.texheight, 0, gl.RGBA_INTEGER, gl.UNSIGNED_INT, data.texdata);
+
+        gl.texImage2D(
+          gl.TEXTURE_2D,
+          0,
+          gl.RGBA32UI,
+          data.texwidth,
+          data.texheight,
+          0,
+          gl.RGBA_INTEGER,
+          gl.UNSIGNED_INT,
+          data.texdata,
+        );
+
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, texture);
       } else if (data.depthIndex) {
         gl.bindBuffer(gl.ARRAY_BUFFER, indexBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, data.depthIndex, gl.DYNAMIC_DRAW);
         vertexCount = data.vertexCount || 0;
-        setStatus((s) => ({ ...s, verts: vertexCount }));
+        setLoadedVerts(vertexCount);
+        if (vertexCount > 0) setLoadingText("Rendering…");
       }
     };
 
-    // Render loop
+    // 1) Load cameras -> build PATH (THIS is the “key difference”)
+    const loadCameras = async () => {
+      const r = await fetch(camerasUrl, { signal: abort.signal, credentials: "omit" });
+      if (!r.ok) throw new Error(`${r.status} Unable to load cameras JSON: ${camerasUrl}`);
+      const cams = await r.json();
+
+      if (!Array.isArray(cams) || cams.length === 0) {
+        throw new Error("Cameras JSON is empty or not an array.");
+      }
+
+      PATH = [];
+      for (const cam of cams) {
+        const R = cam.rotation as number[][]; // 3x3
+        const t = cam.position as number[];   // [x,y,z]
+        if (!R || !t) continue;
+
+        const [yaw, pitch] = yawPitchFromRot3(R);
+
+        // NOTE: your JS flips Y and Z for position to match handedness
+        PATH.push({
+          pos: [t[0], -t[1], -t[2]],
+          yaw,
+          pitch,
+        });
+      }
+
+      if (PATH.length < 1) throw new Error("No valid camera entries found in cameras JSON.");
+    };
+
+    // 2) Load splat streaming -> send to worker
+    const rowLength = 3 * 4 + 3 * 4 + 4 + 4;
+
+    const loadSplat = async () => {
+      setLoadingText("Loading splat…");
+
+      const req = await fetch(splatUrl, { signal: abort.signal, credentials: "omit" });
+      if (!req.ok) throw new Error(`${req.status} Unable to load splat: ${splatUrl}`);
+
+      if (!req.body) {
+        const buf = await req.arrayBuffer();
+        worker.postMessage({ buffer: buf, vertexCount: Math.floor(buf.byteLength / rowLength) });
+        return;
+      }
+
+      const reader = req.body.getReader();
+      let splatData = new Uint8Array(1024 * 1024);
+      let bytesRead = 0;
+      let lastVertexCount = -1;
+
+      while (!cancelled) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (!value) continue;
+
+        if (bytesRead + value.length > splatData.length) {
+          const nextSize = Math.max(splatData.length * 2, bytesRead + value.length);
+          const bigger = new Uint8Array(nextSize);
+          bigger.set(splatData);
+          splatData = bigger;
+        }
+
+        splatData.set(value, bytesRead);
+        bytesRead += value.length;
+
+        if (vertexCount > lastVertexCount) {
+          worker.postMessage({ buffer: splatData.buffer, vertexCount: Math.floor(bytesRead / rowLength) });
+          lastVertexCount = vertexCount;
+        }
+      }
+
+      worker.postMessage({ buffer: splatData.buffer, vertexCount: Math.floor(bytesRead / rowLength) });
+
+      downsample = splatData.length / rowLength > 500000 ? 1 : 1 / window.devicePixelRatio;
+      resize();
+    };
+
+    // 3) Render loop (PATH-driven yaw/pitch)
     let lastFrame = 0;
     let avgFps = 0;
     let lastFpsSet = 0;
@@ -716,99 +779,55 @@ const GaussianSplatViewer: React.FC<GaussianSplatViewerProps> = ({
       const k = 1.0 - Math.exp(-LERP_RATE * dt);
 
       currentT += (targetT - currentT) * k;
-      currentYaw += wrapPi(targetYaw - currentYaw) * k;
-      currentPitch += (targetPitch - currentPitch) * k;
 
-      const camPos = [
-        lerp(START_POS[0], END_POS[0], currentT),
-        lerp(START_POS[1], END_POS[1], currentT),
-        lerp(START_POS[2], END_POS[2], currentT),
-      ];
+      if (PATH.length > 0) {
+        const base = samplePath(PATH, currentT);
 
-      const viewMatrix = makeViewMatrix(currentYaw, currentPitch, camPos);
-      if (viewMatrix) {
-        let inv2 = invert4(viewMatrix);
-        if (inv2) {
-          inv2 = translate4(inv2, 0, -jumpDelta, 0);
-          inv2 = rotate4(inv2, -0.1 * jumpDelta, 1, 0, 0);
-          const actualViewMatrix = invert4(inv2) || viewMatrix;
+        const yaw = base.yaw + (yawFrac - 0.5) * YAW_RANGE;
+        const pitch = base.pitch + (pitchFrac - 0.5) * PITCH_RANGE;
 
-          const viewProj = multiply4(projectionMatrix, actualViewMatrix);
-          worker.postMessage({ view: viewProj });
+        const vm = makeViewMatrix(yaw, pitch, base.pos);
+        if (vm) {
+          let inv2 = invert4(vm);
+          if (inv2) {
+            inv2 = translate4(inv2, 0, -jumpDelta, 0);
+            inv2 = rotate4(inv2, -0.1 * jumpDelta, 1, 0, 0);
+            const actualViewMatrix = invert4(inv2) || vm;
 
-          const currentFps = 1000 / (now - lastFrame) || 0;
-          avgFps = avgFps * 0.9 + currentFps * 0.1;
-          if (now - lastFpsSet > 250) {
-            setFps(Math.round(avgFps));
-            lastFpsSet = now;
-          }
+            const viewProj = multiply4(projectionMatrix, actualViewMatrix);
+            worker.postMessage({ view: viewProj });
 
-          gl.clear(gl.COLOR_BUFFER_BIT);
-          if (vertexCount > 0) {
-            gl.uniformMatrix4fv(u_view, false, actualViewMatrix);
-            gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, 4, vertexCount);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            if (vertexCount > 0) {
+              gl.uniformMatrix4fv(u_view, false, actualViewMatrix);
+              gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, 4, vertexCount);
+            }
           }
         }
+      } else {
+        gl.clear(gl.COLOR_BUFFER_BIT);
+      }
+
+      const currentFps = 1000 / (now - lastFrame) || 0;
+      avgFps = avgFps * 0.9 + currentFps * 0.1;
+      if (now - lastFpsSet > 250) {
+        setFps(Math.round(avgFps));
+        lastFpsSet = now;
       }
 
       lastFrame = now;
       requestAnimationFrame(frame);
     };
-    requestAnimationFrame(frame);
 
-    // Load splatUrl (streaming) like your test.js :contentReference[oaicite:4]{index=4}
+    // boot sequence (cameras first, then splat, then animation)
     (async () => {
       try {
-        setStatus({ text: "Loading splat…", verts: 0, bytes: 0 });
-
-        const req = await fetch(splatUrl, { signal: abort.signal, credentials: "omit" });
-        if (!req.ok) throw new Error(`${req.status} Unable to load ${splatUrl}`);
-
-        const rowLength = 3 * 4 + 3 * 4 + 4 + 4;
-
-        if (!req.body) {
-          const buf = await req.arrayBuffer();
-          const bytes = buf.byteLength;
-          worker.postMessage({ buffer: buf, vertexCount: Math.floor(bytes / rowLength) });
-          setStatus({ text: "Loaded (no-stream)", verts: Math.floor(bytes / rowLength), bytes });
-          return;
-        }
-
-        const reader = req.body.getReader();
-        let splatData = new Uint8Array(1024 * 1024);
-        let bytesRead = 0;
-        let lastVertexCount = -1;
-
-        while (!cancelled) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          if (!value) continue;
-
-          if (bytesRead + value.length > splatData.length) {
-            const nextSize = Math.max(splatData.length * 2, bytesRead + value.length);
-            const bigger = new Uint8Array(nextSize);
-            bigger.set(splatData);
-            splatData = bigger;
-          }
-          splatData.set(value, bytesRead);
-          bytesRead += value.length;
-
-          setStatus((s) => ({ ...s, text: "Loading splat…", bytes: bytesRead }));
-
-          // Same throttling idea as test.js: only push when worker has caught up :contentReference[oaicite:5]{index=5}
-          if (vertexCount > lastVertexCount) {
-            worker.postMessage({ buffer: splatData.buffer, vertexCount: Math.floor(bytesRead / rowLength) });
-            lastVertexCount = vertexCount;
-          }
-        }
-
-        // final push
-        worker.postMessage({ buffer: splatData.buffer, vertexCount: Math.floor(bytesRead / rowLength) });
-
-        downsample = bytesRead / rowLength > 500000 ? 1 : 1 / window.devicePixelRatio;
-        resize();
-
-        setStatus((s) => ({ ...s, text: "Rendering…" }));
+        await loadCameras();
+        setLoadingText("Loading splat…");
+        loadSplat().catch((e) => {
+          if (!cancelled) setError(String((e as any)?.message || e));
+        });
+        requestAnimationFrame(frame);
       } catch (e: any) {
         if (!cancelled) setError(String(e?.message || e));
       }
@@ -817,47 +836,57 @@ const GaussianSplatViewer: React.FC<GaussianSplatViewerProps> = ({
     return () => {
       cancelled = true;
       abort.abort();
+
       ro.disconnect();
-      slider.removeEventListener("input", updateTick);
+
+      slider.removeEventListener("input", onSlider);
+      wrap.removeEventListener("wheel", onWheel);
+
+      canvas.removeEventListener("contextmenu", onContextMenu);
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("pointercancel", onPointerUp);
+
       worker.terminate();
     };
   }, [splatUrl, camerasUrl]);
-
-  const overlayStyle: React.CSSProperties = {
-    position: "absolute",
-    inset: 0,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "column",
-    gap: 10,
-    background: "rgba(0,0,0,0.65)",
-    color: "white",
-    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-    fontSize: 12,
-    pointerEvents: "none",
-  };
 
   return (
     <div ref={wrapRef} className={className} style={{ position: "relative", width, height, background: "black" }}>
       <canvas ref={canvasRef} style={{ width: "100%", height: "100%", display: "block" }} />
 
       {/* HUD */}
-      <div style={{ position: "absolute", top: 8, right: 8, color: "white", fontFamily: "monospace", fontSize: 12, background: "rgba(0,0,0,0.6)", padding: "4px 8px", borderRadius: 6 }}>
-        {fps} fps
+      <div style={{ position: "absolute", top: 8, right: 8, zIndex: 10, pointerEvents: "none" }}>
+        <div style={{ fontSize: 12, fontFamily: "monospace", padding: "4px 8px", borderRadius: 6, background: "rgba(0,0,0,0.6)", color: "white" }}>
+          {fps} fps
+        </div>
       </div>
 
-      <div style={{ position: "absolute", left: 0, right: 0, bottom: 8, padding: "0 12px" }}>
+      {/* Slider */}
+      <div style={{ position: "absolute", left: 0, right: 0, bottom: 8, padding: "0 12px", zIndex: 20, pointerEvents: "auto" }}>
         <input ref={sliderRef} type="range" min={0} max={100} defaultValue={0} style={{ width: "100%" }} />
       </div>
 
       {/* Loading / Error overlay */}
-      {(error || status.verts === 0) && (
-        <div style={overlayStyle}>
+      {(error || loadedVerts === 0) && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexDirection: "column",
+            gap: 10,
+            background: "rgba(0,0,0,0.65)",
+            color: "white",
+            fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+            fontSize: 12,
+            zIndex: 30,
+            pointerEvents: "none",
+          }}
+        >
           {error ? (
             <>
               <div style={{ color: "#ff6b6b", fontWeight: 700 }}>Error</div>
@@ -865,11 +894,10 @@ const GaussianSplatViewer: React.FC<GaussianSplatViewerProps> = ({
             </>
           ) : (
             <>
-              <div>{status.text}</div>
-              <div>bytes: {status.bytes.toLocaleString()}</div>
-              <div>verts: {status.verts.toLocaleString()}</div>
+              <div>{loadingText}</div>
+              <div>verts: {loadedVerts.toLocaleString()}</div>
               <div style={{ opacity: 0.75, maxWidth: 520, textAlign: "center", padding: "0 16px" }}>
-                If this stays at verts=0, your splat URL is probably not serving the file (check Network tab).
+                This version uses <b>camerasUrl</b> to build a PATH and drive yaw/pitch along that camera track.
               </div>
             </>
           )}
@@ -879,4 +907,4 @@ const GaussianSplatViewer: React.FC<GaussianSplatViewerProps> = ({
   );
 };
 
-export default GaussianSplatViewer;
+export default GaussianSplatViewerPath;

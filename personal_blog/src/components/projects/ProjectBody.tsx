@@ -7,6 +7,12 @@ import Image from 'next/image';
 // compact project data (title, placeholder image, one‑liner)
 const projects = [
   {
+    id: "gaussians",
+    title: "Sora → 3D Gaussian Splats",
+    img: "/data/thumbnails/gaussians.png", 
+    desc: "Sora-generated video → reconstructed 3D Gaussian splats, with free-look + guided flythrough WebGL viewers.",
+  },
+  {
     id: "ihm-tactile",
     title: "in-hand manipulation w/ raw tactile signals",
     img: "/data/thumbnails/ihm_thumbnail.gif",
