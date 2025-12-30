@@ -183,7 +183,7 @@ function samplePath(path: PathKeyframe[], t: number) {
 }
 
 /* ------------------------- worker (same as your JS core) ------------------------- */
-function createWorker(self: DedicatedWorkerGlobalScope) {
+function createWorker(self: any) {
   let buffer: ArrayBuffer | undefined;
   let vertexCount = 0;
   let viewProj: number[] | undefined;
@@ -508,6 +508,7 @@ const GaussianSplatViewerPath: React.FC<GaussianSplatViewerPathProps> = ({
 
     // compile/link
     function compile(type: number, src: string) {
+      if (!gl) throw new Error("no gl");
       const sh = gl.createShader(type)!;
       gl.shaderSource(sh, src);
       gl.compileShader(sh);
@@ -565,7 +566,7 @@ const GaussianSplatViewerPath: React.FC<GaussianSplatViewerPathProps> = ({
     const a_index = gl.getAttribLocation(program, "index");
     gl.enableVertexAttribArray(a_index);
     gl.bindBuffer(gl.ARRAY_BUFFER, indexBuffer);
-    gl.vertexAttribIPointer(a_index, 1, gl.INT, false, 0, 0);
+    gl.vertexAttribIPointer(a_index, 1, gl.INT, 0, 0);
     gl.vertexAttribDivisor(a_index, 1);
 
     // worker

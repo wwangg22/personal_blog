@@ -7,6 +7,13 @@ import Image from 'next/image';
 // compact project data (title, placeholder image, one‑liner)
 const projects = [
   {
+  id: "vlsi",
+  title: "VLSI 8-bit Microprocessor Core",
+  img: "/data/vlsi/final_layout.png",
+  caption: "Full-custom 8-bit core: SRAM + datapath + PLA control",
+  desc: "Designed and laid out an 8-bit microprocessor from scratch (SRAM, adder, shifter, mux/bus, and PLA control), with DRC/LVS-clean layouts and a floorplan shaped by early adder/shifter density tradeoffs.",
+},
+  {
     id: "gaussians",
     title: "Sora → 3D Gaussian Splats",
     img: "/data/thumbnails/gaussians.png", 
